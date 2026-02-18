@@ -2,10 +2,6 @@
     "name": "clubmanager-pro",
     "private": true,
     "version": "1.0.0",
-    "workspaces": [
-        "server",
-        "client"
-    ],
     "scripts": {
         "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
         "dev:server": "npm --prefix server run dev",
