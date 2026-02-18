@@ -43,8 +43,12 @@ COPY --from=builder /app/prisma ./prisma
 # 4. Copy compiled JS from builder
 COPY --from=builder /app/dist ./dist
 
-# 5. Expose the port Railway will route to
+# 5. Copy entrypoint script
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
+# 6. Expose the port Railway will route to
 EXPOSE 3000
 
-# 6. Start the server
-CMD ["node", "dist/index.js"]
+# 7. Start with entrypoint (syncs DB schema, then starts server)
+CMD ["./entrypoint.sh"]
