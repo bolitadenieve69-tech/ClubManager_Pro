@@ -1,10 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Lock, GraduationCap, Zap, Sparkles, ChevronRight } from 'lucide-react';
 
 export default function AdminActions() {
+    const navigate = useNavigate();
+
     return (
         <Card className="p-10 border-none shadow-premium relative overflow-hidden bg-white/90 backdrop-blur-xl group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-bl-[4rem] pointer-events-none group-hover:scale-110 transition-transform duration-700" />
@@ -26,6 +29,7 @@ export default function AdminActions() {
                 <motion.div whileHover={{ x: 5 }}>
                     <Button
                         variant="secondary"
+                        onClick={() => navigate('/reservations')}
                         className="w-full h-20 flex justify-between items-center px-6 border-2 border-dashed border-slate-100 hover:border-primary-100 hover:bg-primary-50/50 hover:shadow-sm"
                     >
                         <div className="flex items-center gap-4">
@@ -44,6 +48,7 @@ export default function AdminActions() {
                 <motion.div whileHover={{ x: 5 }}>
                     <Button
                         variant="secondary"
+                        onClick={() => navigate('/schedule')}
                         className="w-full h-20 flex justify-between items-center px-6 border-2 border-dashed border-indigo-50 hover:border-indigo-200 hover:bg-indigo-50/50 hover:shadow-sm"
                     >
                         <div className="flex items-center gap-4">

@@ -179,6 +179,14 @@ export default function Americano() {
                     <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Torneo Americano</h1>
                     <p className="text-slate-500">Gestión individual, rotación de parejas y ranking en vivo.</p>
                 </div>
+
+                {error && (
+                    <div className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                        <Badge variant="error" className="bg-rose-500 text-white">ERROR</Badge>
+                        <p className="font-bold text-sm">{error}</p>
+                        <button onClick={() => setError("")} className="ml-auto text-rose-400 hover:text-rose-600">✕</button>
+                    </div>
+                )}
                 <button
                     onClick={handleCreate}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-2xl transition-all shadow-lg shadow-indigo-200 flex items-center gap-2 group"

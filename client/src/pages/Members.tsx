@@ -20,20 +20,47 @@ export default function Members() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [exporting, setExporting] = useState(false);
+    const [error, setError] = useState("");
+    const [creating, setCreating] = useState(false);
 
+    const fetchMembers = async () => {
+        setLoading(true);
+        try {
+            const data = await apiFetch<any>('/members');
+            setMembers(data.members || []);
+        } catch (err: any) {
+            setError(err.message || "Error al cargar socios");
+        } finally {
+            setLoading(false);
+        }
+    };
     useEffect(() => {
-        const fetchMembers = async () => {
-            try {
-                const data = await apiFetch<any>('/members');
-                setMembers(data.members || []);
-            } catch (err) {
-                console.error("Error fetching members:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchMembers();
     }, []);
+
+    const handleCreateMember = async () => {
+        const name = prompt("Nombre completo del socio:");
+        if (!name) return;
+        const phone = prompt("Teléfono WhatsApp (ej: +34...):");
+        if (!phone) return;
+
+        setCreating(true);
+        try {
+            await apiFetch('/members', {
+                method: 'POST',
+                body: JSON.stringify({
+                    full_name: name,
+                    whatsapp_phone: phone,
+                    status: 'APPROVED'
+                })
+            });
+            fetchMembers();
+        } catch (err: any) {
+            setError(err.message || "Error al crear socio");
+        } finally {
+            setCreating(false);
+        }
+    };
 
     const handleExport = async () => {
         setExporting(true);
@@ -98,11 +125,24 @@ export default function Members() {
                     >
                         {exporting ? "Exportando..." : "Exportar CSV"}
                     </Button>
-                    <Button variant="primary" icon={<UserPlus className="w-4 h-4" />}>
-                        Nuevo Socio
+                    <Button
+                        variant="primary"
+                        icon={creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                        onClick={handleCreateMember}
+                        disabled={creating}
+                    >
+                        {creating ? "Creando..." : "Nuevo Socio"}
                     </Button>
                 </div>
             </div>
+
+            {error && (
+                <div className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                    <Badge variant="error" className="bg-rose-500 text-white">ERROR</Badge>
+                    <p className="font-bold text-sm">{error}</p>
+                    <button onClick={() => setError("")} className="ml-auto text-rose-400 hover:text-rose-600">✕</button>
+                </div>
+            )}
 
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
