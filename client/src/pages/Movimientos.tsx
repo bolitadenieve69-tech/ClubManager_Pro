@@ -16,6 +16,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { cn } from '../lib/utils';
+import { apiFetch } from "../lib/api";
 
 interface Movement {
     id: string;
@@ -47,12 +48,7 @@ export default function Movimientos() {
     const fetchMovements = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem("token");
-            const res = await fetch("http://localhost:3000/movements", {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error("Error al cargar los movimientos");
-            const data = await res.json();
+            const data = await apiFetch<{ movements: Movement[] }>("/movements");
             setMovements(data.movements);
         } catch (err: any) {
             setError(err.message);
@@ -65,23 +61,16 @@ export default function Movimientos() {
         e.preventDefault();
         try {
             setSubmitting(true);
-            const token = localStorage.getItem("token");
             const amountCents = Math.round(parseFloat(amount) * 100) * (type === "expense" ? -1 : 1);
 
-            const res = await fetch("http://localhost:3000/movements", {
+            await apiFetch("/movements", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     amount_cents: amountCents,
                     concept,
                     category,
                 })
             });
-
-            if (!res.ok) throw new Error("Error al crear el movimiento");
 
             setIsModalOpen(false);
             setAmount("");
@@ -97,12 +86,9 @@ export default function Movimientos() {
     const handleDelete = async (id: string) => {
         if (!confirm("¿Seguro que quieres eliminar este movimiento?")) return;
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:3000/movements/${id}`, {
+            await apiFetch(`/movements/${id}`, {
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` }
             });
-            if (!res.ok) throw new Error("Error al eliminar");
             fetchMovements();
         } catch (err: any) {
             alert(err.message);

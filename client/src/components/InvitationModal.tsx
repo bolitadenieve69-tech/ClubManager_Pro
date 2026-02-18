@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, UserPlus, CheckCircle, Smartphone } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { apiFetch } from "../lib/api";
 
 interface InvitationModalProps {
     isOpen: boolean;
@@ -20,16 +21,10 @@ export default function InvitationModal({ isOpen, onClose, onSuccess }: Invitati
         e.preventDefault();
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch('http://localhost:3000/members/invitations', {
+            const data = await apiFetch<any>('/members/invitations', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
                 body: JSON.stringify({ fullName, whatsappPhone })
             });
-            const data = await res.json();
             setSuccessData(data);
             onSuccess();
         } catch (err) {

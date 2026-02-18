@@ -6,6 +6,7 @@ import { Button } from './ui/Button';
 import { Printer, Calendar, Clock, Lock, GraduationCap, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, parseISO, startOfDay, addMinutes, isSameMinute, addDays, subDays } from 'date-fns';
 import { cn } from '../lib/utils';
+import { apiFetch } from "../lib/api";
 
 interface OccupancyItem {
     id: string;
@@ -33,14 +34,10 @@ export default function OccupancyQuadrant() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const token = localStorage.getItem('token');
-                const [courtsRes, occRes] = await Promise.all([
-                    fetch('http://localhost:3000/courts', { headers: { Authorization: `Bearer ${token}` } }),
-                    fetch(`http://localhost:3000/occupancy/daily?date=${date}`, { headers: { Authorization: `Bearer ${token}` } })
+                const [courtsData, occData] = await Promise.all([
+                    apiFetch<{ courts: Court[] }>('/courts'),
+                    apiFetch<{ occupancy: OccupancyItem[] }>(`/occupancy/daily?date=${date}`)
                 ]);
-
-                const courtsData = await courtsRes.json();
-                const occData = await occRes.json();
 
                 setCourts(courtsData.courts);
                 setOccupancy(occData.occupancy);
@@ -57,18 +54,11 @@ export default function OccupancyQuadrant() {
 
     const confirmPayment = async (bookingId: string) => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`http://localhost:3000/bookings/${bookingId}/confirm-all`, {
+            await apiFetch(`/bookings/${bookingId}/confirm-all`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${token}` }
             });
-            if (res.ok) {
-                const occRes = await fetch(`http://localhost:3000/occupancy/daily?date=${date}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const occData = await occRes.json();
-                setOccupancy(occData.occupancy);
-            }
+            const occData = await apiFetch<{ occupancy: OccupancyItem[] }>(`/occupancy/daily?date=${date}`);
+            setOccupancy(occData.occupancy);
         } catch (err) {
             console.error("Error confirming payment:", err);
         }

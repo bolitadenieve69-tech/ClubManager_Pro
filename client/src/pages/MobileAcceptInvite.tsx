@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { CheckCircle2, Loader2, XCircle, Sparkles, ShieldCheck, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { apiFetch } from "../lib/api";
 
 export default function MobileAcceptInvite() {
     const { token } = useParams();
@@ -18,23 +19,17 @@ export default function MobileAcceptInvite() {
                 // Simulate a small delay for "premium" loading feel
                 await new Promise(r => setTimeout(r, 1500));
 
-                const res = await fetch('http://localhost:3000/members/invitations/accept', {
+                const data = await apiFetch<any>('/members/invitations/accept', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token })
                 });
-                const data = await res.json();
-                if (res.ok) {
-                    setStatus('SUCCESS');
-                    setMessage(data.message);
-                    // Auto-login: Store token and user info
-                    if (data.token) {
-                        localStorage.setItem('token', data.token);
-                        localStorage.setItem('user', JSON.stringify(data.user));
-                    }
-                } else {
-                    setStatus('ERROR');
-                    setMessage(data.error || 'Invitación no válida o expirada');
+
+                setStatus('SUCCESS');
+                setMessage(data.message);
+                // Auto-login: Store token and user info
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
                 }
             } catch (err) {
                 setStatus('ERROR');

@@ -5,6 +5,7 @@ import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Users, UserPlus, Send, CheckCircle, Clock, Search, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { apiFetch } from "../lib/api";
 import InvitationModal from './InvitationModal';
 
 interface Member {
@@ -22,11 +23,7 @@ export default function MembersManagement() {
 
     const fetchMembers = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch('http://localhost:3000/members', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
+            const data = await apiFetch<{ members: Member[] }>('/members');
             setMembers(data.members || []);
         } catch (err) {
             console.error("Error fetching members:", err);

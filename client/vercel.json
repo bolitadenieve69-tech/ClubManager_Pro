@@ -1,0 +1,11 @@
+{
+    "rewriteRuntime": "nodejs20.x",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ],
+    "cleanUrls": true,
+    "framework": "vite"
+}

@@ -19,6 +19,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../lib/utils';
+import { apiFetch } from "../lib/api";
 
 interface SupplierInvoice {
     id: string;
@@ -53,12 +54,7 @@ export default function Gastos() {
     const fetchInvoices = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem("token");
-            const res = await fetch("http://localhost:3000/supplier-invoices", {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error("Error al cargar las facturas");
-            const data = await res.json();
+            const data = await apiFetch<{ invoices: SupplierInvoice[] }>("/supplier-invoices");
             setInvoices(data.invoices);
         } catch (err: any) {
             setError(err.message);
@@ -71,15 +67,10 @@ export default function Gastos() {
         e.preventDefault();
         try {
             setSubmitting(true);
-            const token = localStorage.getItem("token");
             const amountCents = Math.round(parseFloat(amount) * 100);
 
-            const res = await fetch("http://localhost:3000/supplier-invoices", {
+            await apiFetch("/supplier-invoices", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     provider_name: providerName,
                     category,
@@ -89,8 +80,6 @@ export default function Gastos() {
                     status
                 })
             });
-
-            if (!res.ok) throw new Error("Error al crear la factura");
 
             setIsModalOpen(false);
             setProviderName("");
@@ -108,12 +97,9 @@ export default function Gastos() {
     const handleDelete = async (id: string) => {
         if (!confirm("¿Seguro que quieres eliminar esta factura?")) return;
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:3000/supplier-invoices/${id}`, {
+            await apiFetch(`/supplier-invoices/${id}`, {
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` }
             });
-            if (!res.ok) throw new Error("Error al eliminar");
             fetchInvoices();
         } catch (err: any) {
             alert(err.message);
@@ -123,16 +109,10 @@ export default function Gastos() {
     const handleToggleStatus = async (invoice: SupplierInvoice) => {
         const newStatus = invoice.status === "PENDING" ? "PAID" : "PENDING";
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:3000/supplier-invoices/${invoice.id}`, {
+            await apiFetch(`/supplier-invoices/${invoice.id}`, {
                 method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
                 body: JSON.stringify({ status: newStatus })
             });
-            if (!res.ok) throw new Error("Error al actualizar estado");
             fetchInvoices();
         } catch (err: any) {
             alert(err.message);

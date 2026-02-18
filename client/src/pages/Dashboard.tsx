@@ -21,6 +21,7 @@ import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
+import { apiFetch } from "../lib/api";
 import OccupancyQuadrant from '../components/OccupancyQuadrant';
 import AdminActions from '../components/AdminActions';
 import MembersManagement from '../components/MembersManagement';
@@ -46,15 +47,9 @@ export default function Dashboard() {
                 });
                 setKpis(data);
 
-                const token = localStorage.getItem("token");
-                const movRes = await fetch("http://localhost:3000/movements", {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (movRes.ok) {
-                    const movData = await movRes.json();
-                    const balance = movData.movements.reduce((acc: number, m: any) => acc + m.amount_cents, 0);
-                    setMovementBalance(balance / 100);
-                }
+                const movData = await apiFetch<{ movements: any[] }>("/movements");
+                const balance = movData.movements.reduce((acc: number, m: any) => acc + m.amount_cents, 0);
+                setMovementBalance(balance / 100);
             } catch (err) {
                 console.error("Error fetching dashboard KPIs:", err);
             } finally {
