@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, ApiError } from '../lib/api';
-import { LogIn, UserPlus, Mail, Lock, AlertCircle } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -14,6 +14,7 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     async function register() {
         setError('');
@@ -108,13 +109,26 @@ export default function Login() {
 
                             <Input
                                 label="Contraseña"
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
                                 required
                                 minLength={6}
                                 icon={<Lock className="w-5 h-5 text-slate-300" />}
+                                rightElement={
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="focus:outline-none hover:text-primary-600 transition-colors p-1"
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="w-5 h-5" />
+                                        ) : (
+                                            <Eye className="w-5 h-5" />
+                                        )}
+                                    </button>
+                                }
                             />
 
                             <Button
