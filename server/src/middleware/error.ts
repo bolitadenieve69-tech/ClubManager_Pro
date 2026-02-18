@@ -46,6 +46,7 @@ export const errorHandler = (
         error: {
             code: 'INTERNAL_ERROR',
             message: 'Ha ocurrido un error inesperado',
+            debug: err.message,
         },
     });
 };
