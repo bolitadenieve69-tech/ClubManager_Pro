@@ -11,6 +11,31 @@ import { env } from "../utils/env.js";
 
 export const membersRouter = Router();
 
+// Create a member directly (Admin)
+membersRouter.post(
+    "/",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const clubId = req.user?.clubId;
+        const { full_name, whatsapp_phone, status } = z.object({
+            full_name: z.string().min(1),
+            whatsapp_phone: z.string().min(9),
+            status: z.enum(["APPROVED", "PENDING"]).default("APPROVED")
+        }).parse(req.body);
+
+        const member = await prisma.member.create({
+            data: {
+                club_id: clubId!,
+                full_name,
+                whatsapp_phone,
+                status
+            }
+        });
+
+        res.status(201).json({ member });
+    })
+);
+
 // Admin: Invite a member
 membersRouter.post(
     "/invitations",

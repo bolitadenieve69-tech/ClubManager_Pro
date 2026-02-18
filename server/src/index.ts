@@ -35,6 +35,23 @@ app.get('/health/db', async (req, res) => {
     }
 });
 
+app.get('/debug/stats', async (req, res) => {
+    try {
+        const stats = {
+            clubs: await prisma.club.count(),
+            users: await prisma.user.count(),
+            members: await prisma.member.count(),
+            tournaments: await prisma.tournament.count(),
+            bookings: await prisma.booking.count(),
+            courts: await prisma.court.count(),
+            clubs_list: await prisma.club.findMany({ select: { id: true, legal_name: true } })
+        };
+        res.json(stats);
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Root route
 app.get('/', (req, res) => {
     res.send('ClubManager Pro API is running');
