@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { env } from './utils/env.js';
+import { errorHandler } from './middleware/error.js';
+import { prisma } from './db/prisma.js';
 import { startExpirationJob } from './utils/jobs.js';
 
 const app = express();
@@ -21,6 +23,16 @@ app.get('/health', (req, res) => {
         version: env.APP_VERSION,
         status: 'Running'
     });
+});
+
+// DB Health Check
+app.get('/health/db', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ ok: true, db: 'connected' });
+    } catch (err: any) {
+        res.status(500).json({ ok: false, db: 'error', message: err.message });
+    }
 });
 
 // Root route
@@ -71,6 +83,8 @@ app.use("/accounting", accountingRouter);
 // app.use("/club", clubRoutes);
 
 // Error Handling
+app.use(errorHandler);
+
 app.use((req, res) => {
     res.status(404).json({ error: 'Not Found' });
 });
