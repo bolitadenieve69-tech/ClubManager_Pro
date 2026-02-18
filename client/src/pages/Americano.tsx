@@ -12,7 +12,8 @@ import {
     Target,
     Settings,
     Loader2,
-    FileText
+    FileText,
+    XCircle
 } from "lucide-react";
 import { Badge } from "../components/ui/Badge";
 import { clsx, type ClassValue } from "clsx";
@@ -57,6 +58,10 @@ export default function Americano() {
     const [detail, setDetail] = useState<{ tournament: Tournament; participants: Participant[]; matches: Match[] } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [isCreatingTorneo, setIsCreatingTorneo] = useState(false);
+    const [newTorneoName, setNewTorneoName] = useState("");
+    const [isAddingJugador, setIsAddingJugador] = useState(false);
+    const [newJugadorName, setNewJugadorName] = useState("");
 
     const loadList = async () => {
         setLoading(true);
@@ -83,20 +88,24 @@ export default function Americano() {
     };
 
     const handleCreate = async () => {
-        const name = prompt("Nombre del torneo:");
-        if (!name) return;
+        if (!newTorneoName.trim()) {
+            setError("Por favor, introduce un nombre para el torneo.");
+            return;
+        }
         try {
             await apiFetch("/tournaments", {
                 method: "POST",
                 body: JSON.stringify({
-                    name,
+                    name: newTorneoName,
                     date: new Date().toISOString(),
                     points_per_match: 24,
-                    duration_minutes: 180, // Default 3 hours
-                    match_duration_minutes: 21, // Default 21 minutes
+                    duration_minutes: 180,
+                    match_duration_minutes: 21,
                     price_per_person: 1500
                 })
             });
+            setNewTorneoName("");
+            setIsCreatingTorneo(false);
             loadList();
         } catch (e: any) {
             setError(e.message);
@@ -128,14 +137,14 @@ export default function Americano() {
     };
 
     const handleAddParticipantByName = async () => {
-        if (!selected) return;
-        const name = prompt("Nombre del jugador:");
-        if (!name) return;
+        if (!selected || !newJugadorName.trim()) return;
         try {
             await apiFetch(`/tournaments/${selected}/participants`, {
                 method: "POST",
-                body: JSON.stringify({ name })
+                body: JSON.stringify({ name: newJugadorName })
             });
+            setNewJugadorName("");
+            setIsAddingJugador(false);
             loadDetail(selected);
         } catch (e: any) {
             setError(e.message);
@@ -187,13 +196,38 @@ export default function Americano() {
                         <button onClick={() => setError("")} className="ml-auto text-rose-400 hover:text-rose-600">✕</button>
                     </div>
                 )}
-                <button
-                    onClick={handleCreate}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-2xl transition-all shadow-lg shadow-indigo-200 flex items-center gap-2 group"
-                >
-                    <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                    Nuevo Torneo
-                </button>
+                {isCreatingTorneo ? (
+                    <div className="flex items-center gap-2 animate-in slide-in-from-right-2">
+                        <input
+                            autoFocus
+                            placeholder="Nombre del torneo..."
+                            value={newTorneoName}
+                            onChange={(e) => setNewTorneoName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+                            className="bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 text-sm focus:border-indigo-500 outline-none w-64"
+                        />
+                        <button
+                            onClick={handleCreate}
+                            className="bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition-colors"
+                        >
+                            <CheckCircle2 className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={() => setIsCreatingTorneo(false)}
+                            className="bg-slate-100 text-slate-500 p-2 rounded-xl hover:bg-slate-200 transition-colors"
+                        >
+                            <XCircle className="w-5 h-5" />
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => setIsCreatingTorneo(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-2xl transition-all shadow-lg shadow-indigo-200 flex items-center gap-2 group"
+                    >
+                        <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                        Nuevo Torneo
+                    </button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -324,12 +358,27 @@ export default function Americano() {
                                         >
                                             Inscribirme
                                         </button>
-                                        <button
-                                            onClick={handleAddParticipantByName}
-                                            className="text-indigo-600 text-[10px] font-black uppercase tracking-widest border border-indigo-100 px-3 py-1 rounded-full hover:bg-indigo-50 flex items-center gap-1"
-                                        >
-                                            <Plus className="w-3 h-3" /> Añadir Jugador
-                                        </button>
+                                        {isAddingJugador ? (
+                                            <div className="flex items-center gap-2 animate-in fade-in">
+                                                <input
+                                                    autoFocus
+                                                    placeholder="Nombre..."
+                                                    value={newJugadorName}
+                                                    onChange={(e) => setNewJugadorName(e.target.value)}
+                                                    onKeyDown={(e) => e.key === 'Enter' && handleAddParticipantByName()}
+                                                    className="border border-indigo-100 rounded-full px-3 py-1 text-[10px] uppercase font-black tracking-widest outline-none focus:border-indigo-500"
+                                                />
+                                                <button onClick={handleAddParticipantByName} className="text-emerald-500 hover:scale-110"><CheckCircle2 className="w-4 h-4" /></button>
+                                                <button onClick={() => setIsAddingJugador(false)} className="text-rose-500 hover:scale-110"><XCircle className="w-4 h-4" /></button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => setIsAddingJugador(true)}
+                                                className="text-indigo-600 text-[10px] font-black uppercase tracking-widest border border-indigo-100 px-3 py-1 rounded-full hover:bg-indigo-50 flex items-center gap-1"
+                                            >
+                                                <Plus className="w-3 h-3" /> Añadir Jugador
+                                            </button>
+                                        )}
                                     </div>
                                     <button
                                         onClick={handleGenerateRounds}

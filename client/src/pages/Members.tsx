@@ -22,6 +22,9 @@ export default function Members() {
     const [exporting, setExporting] = useState(false);
     const [error, setError] = useState("");
     const [creating, setCreating] = useState(false);
+    const [isCreatingManual, setIsCreatingManual] = useState(false);
+    const [newName, setNewName] = useState("");
+    const [newPhone, setNewPhone] = useState("");
 
     const fetchMembers = async () => {
         setLoading(true);
@@ -39,21 +42,24 @@ export default function Members() {
     }, []);
 
     const handleCreateMember = async () => {
-        const name = prompt("Nombre completo del socio:");
-        if (!name) return;
-        const phone = prompt("Teléfono WhatsApp (ej: +34...):");
-        if (!phone) return;
+        if (!newName.trim() || !newPhone.trim()) {
+            setError("Por favor, completa el nombre y el teléfono.");
+            return;
+        }
 
         setCreating(true);
         try {
             await apiFetch('/members', {
                 method: 'POST',
                 body: JSON.stringify({
-                    full_name: name,
-                    whatsapp_phone: phone,
+                    full_name: newName,
+                    whatsapp_phone: newPhone,
                     status: 'APPROVED'
                 })
             });
+            setNewName("");
+            setNewPhone("");
+            setIsCreatingManual(false);
             fetchMembers();
         } catch (err: any) {
             setError(err.message || "Error al crear socio");
@@ -128,13 +134,48 @@ export default function Members() {
                     <Button
                         variant="primary"
                         icon={creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                        onClick={handleCreateMember}
+                        onClick={() => setIsCreatingManual(!isCreatingManual)}
                         disabled={creating}
                     >
-                        {creating ? "Creando..." : "Nuevo Socio"}
+                        {isCreatingManual ? "Cancelar" : "Nuevo Socio"}
                     </Button>
                 </div>
             </div>
+
+            {isCreatingManual && (
+                <Card className="p-6 border-none bg-white shadow-premium animate-in slide-in-from-top-4 duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Nombre Completo</label>
+                            <input
+                                autoFocus
+                                placeholder="Ej: Juan Pérez"
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Teléfono WhatsApp</label>
+                            <input
+                                placeholder="Ej: +34 600 000 000"
+                                value={newPhone}
+                                onChange={(e) => setNewPhone(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleCreateMember()}
+                                className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                            />
+                        </div>
+                        <Button
+                            variant="primary"
+                            className="h-[46px]"
+                            onClick={handleCreateMember}
+                            loading={creating}
+                        >
+                            Confirmar Registro
+                        </Button>
+                    </div>
+                </Card>
+            )}
 
             {error && (
                 <div className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">

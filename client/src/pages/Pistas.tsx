@@ -55,6 +55,10 @@ export default function Pistas() {
     }, []);
 
     async function create() {
+        if (!name.trim()) {
+            setError("Por favor, introduce un nombre para la pista.");
+            return;
+        }
         setError("");
         setOk("");
         try {

@@ -19,7 +19,8 @@ import {
     Calculator,
     Menu,
     X,
-    Settings
+    Settings,
+    ArrowLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../lib/utils";
@@ -199,17 +200,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent-500/5 rounded-full blur-[120px] -ml-48 -mb-48" />
 
                 <header className="h-20 lg:h-20 bg-white/70 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-40 px-6 lg:px-10 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
-                            className="p-2 -ml-2 text-slate-500 lg:hidden"
+                            className="p-2 -ml-2 text-slate-500 lg:hidden hover:bg-slate-100 rounded-xl transition-colors"
                         >
                             <Menu className="w-6 h-6" />
                         </button>
+
+                        {location.pathname !== "/dashboard" && (
+                            <button
+                                onClick={() => navigate(-1)}
+                                className="flex items-center gap-2 p-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all group"
+                            >
+                                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Volver</span>
+                            </button>
+                        )}
+
                         <div className="h-8 w-1.5 bg-gradient-to-b from-primary-600 to-primary-400 rounded-full shadow-sm shadow-primary-500/20" />
-                        <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.25em]">
-                            {location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || "Overview"}
-                        </h3>
+
+                        <Link to="/dashboard" className="group flex items-center gap-2">
+                            <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.25em] group-hover:text-primary-600 transition-colors">
+                                {location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || "Overview"}
+                            </h3>
+                        </Link>
                     </div>
                 </header>
 
