@@ -1,0 +1,15 @@
+# Logs
+node_modules
+*.log
+
+# Editor directories and files
+.vscode/*
+.idea
+.DS_Store
+
+# Workspace files
+*.code-workspace
+
+# Environment variables
+.env
+.env.production

@@ -1,0 +1,15 @@
+# Logs
+node_modules
+dist
+*.log
+
+# Prisma
+/prisma/dev.db
+/prisma/dev.db-journal
+
+# Environment variables
+.env
+.env.production
+
+# OS files
+.DS_Store
