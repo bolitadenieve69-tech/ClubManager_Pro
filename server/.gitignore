@@ -13,3 +13,10 @@ dist
 
 # OS files
 .DS_Store
+
+# Temporary and Cache
+temp_*
+.npm_cache/
+_cacache/
+*.prisma
+!schema.prisma
