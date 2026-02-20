@@ -3,45 +3,54 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { CheckCircle2, Loader2, XCircle, Sparkles, ShieldCheck, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Loader2, XCircle, Sparkles, ShieldCheck, ArrowRight, UserCheck, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiFetch } from "../lib/api";
 
 export default function MobileAcceptInvite() {
     const { token } = useParams();
     const navigate = useNavigate();
-    const [status, setStatus] = useState<'LOADING' | 'SUCCESS' | 'ERROR'>('LOADING');
+    const [status, setStatus] = useState<'LOADING' | 'READY' | 'SUCCESS' | 'ERROR'>('LOADING');
     const [message, setMessage] = useState('');
+    const [invitationData, setInvitationData] = useState<any>(null);
 
     useEffect(() => {
-        const acceptInvite = async () => {
+        const validateInvite = async () => {
             try {
-                // Simulate a small delay for "premium" loading feel
-                await new Promise(r => setTimeout(r, 1500));
-
-                const data = await apiFetch<any>('/members/invitations/accept', {
-                    method: 'POST',
-                    body: JSON.stringify({ token })
-                });
-
-                setStatus('SUCCESS');
-                setMessage(data.message);
-                // Auto-login: Store token and user info
-                if (data.token) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                }
-            } catch (err) {
+                // Initial check without consuming
+                const data = await apiFetch<any>(`/members/invitations/${token}`);
+                setInvitationData(data);
+                setStatus('READY');
+            } catch (err: any) {
                 setStatus('ERROR');
-                setMessage('Error de conexión con el servidor');
+                setMessage(err.message || 'El enlace de invitación no es válido o ha expirado.');
             }
         };
-        acceptInvite();
+        if (token) validateInvite();
     }, [token]);
+
+    const handleAccept = async () => {
+        setStatus('LOADING');
+        try {
+            const data = await apiFetch<any>('/members/invitations/accept', {
+                method: 'POST',
+                body: JSON.stringify({ token })
+            });
+
+            setStatus('SUCCESS');
+            setMessage(data.message);
+            if (data.token) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+            }
+        } catch (err: any) {
+            setStatus('ERROR');
+            setMessage(err.message || 'No se pudo procesar la invitación.');
+        }
+    };
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 max-w-md mx-auto relative overflow-hidden font-sans">
-            {/* Background elements for premium feel */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/5 rounded-full blur-3xl -mr-32 -mt-32" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -ml-32 -mb-32" />
 
@@ -54,7 +63,7 @@ export default function MobileAcceptInvite() {
                     transition={{ type: "spring", damping: 20, stiffness: 100 }}
                     className="w-full relative z-10"
                 >
-                    <Card className="w-full p-12 flex flex-col items-center text-center gap-8 border-none shadow-2xl bg-white/90 backdrop-blur-xl rounded-[3rem]">
+                    <Card className="w-full p-10 flex flex-col items-center text-center gap-8 border-none shadow-2xl bg-white/95 backdrop-blur-xl rounded-[3rem]">
                         {status === 'LOADING' && (
                             <div className="space-y-8 py-4">
                                 <div className="relative">
@@ -62,12 +71,40 @@ export default function MobileAcceptInvite() {
                                     <Loader2 className="w-20 h-20 text-primary-600 animate-spin relative z-10" />
                                 </div>
                                 <div className="space-y-4">
-                                    <Badge variant="neutral" className="bg-primary-50 text-primary-600 border-primary-100">SEGURIDAD ACTIVADA</Badge>
+                                    <Badge variant="neutral" className="bg-primary-50 text-primary-600 border-primary-100 uppercase tracking-widest">Protocolo Seguro</Badge>
                                     <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">
-                                        Validando<br />Acceso
+                                        Validando<br />Invitación
                                     </h2>
-                                    <p className="text-sm font-bold text-slate-400">ClubManager Pro Security Protocol</p>
+                                    <p className="text-xs font-bold text-slate-400">Verificando credenciales del club...</p>
                                 </div>
+                            </div>
+                        )}
+
+                        {status === 'READY' && (
+                            <div className="space-y-8">
+                                <div className="relative">
+                                    <div className="w-24 h-24 bg-indigo-500 rounded-[2rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30">
+                                        <UserCheck className="w-12 h-12" />
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <Badge variant="neutral" className="bg-indigo-50 text-indigo-600 border-indigo-100 uppercase tracking-widest">Invitación Válida</Badge>
+                                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase leading-none">
+                                        ¡Únete al<br />Club!
+                                    </h2>
+                                    <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                                        Hola <strong className="text-slate-900">{invitationData?.member?.full_name}</strong>, has sido invitado a unirte a la app de gestión de tu club.
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="primary"
+                                    className="w-full py-7 rounded-[2rem] bg-indigo-600 text-white shadow-xl shadow-indigo-600/30 hover:bg-black group"
+                                    onClick={handleAccept}
+                                >
+                                    <span className="flex items-center justify-center gap-3 font-black tracking-widest uppercase">
+                                        ACEPTAR INVITACIÓN <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </span>
+                                </Button>
                             </div>
                         )}
 
@@ -92,10 +129,10 @@ export default function MobileAcceptInvite() {
 
                                 <div className="space-y-4">
                                     <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase leading-none">
-                                        ¡Acceso<br />Concedido!
+                                        ¡Bienvenido!
                                     </h2>
-                                    <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-[200px] mx-auto">
-                                        {message || "Tu perfil ha sido verificado con éxito."}
+                                    <p className="text-sm font-medium text-slate-500 leading-relaxed px-4">
+                                        {message || "Tu perfil ha sido configurado con éxito. Ya eres miembro oficial en la App."}
                                     </p>
                                 </div>
 
@@ -104,8 +141,8 @@ export default function MobileAcceptInvite() {
                                     className="w-full py-7 rounded-[2rem] bg-slate-900 text-white shadow-xl shadow-slate-900/40 hover:bg-black group"
                                     onClick={() => navigate('/m/book')}
                                 >
-                                    <span className="flex items-center gap-3 font-black tracking-widest uppercase">
-                                        RESERVAR PISTA <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    <span className="flex items-center justify-center gap-3 font-black tracking-widest uppercase">
+                                        COMENZAR A RESERVAR <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                     </span>
                                 </Button>
                             </div>
@@ -114,20 +151,20 @@ export default function MobileAcceptInvite() {
                         {status === 'ERROR' && (
                             <div className="space-y-8 py-4">
                                 <div className="w-20 h-20 bg-rose-500/10 rounded-[2rem] flex items-center justify-center text-rose-600 shadow-inner">
-                                    <XCircle className="w-10 h-10" />
+                                    <AlertCircle className="w-10 h-10" />
                                 </div>
                                 <div className="space-y-4">
-                                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter italic uppercase">Acceso Denegado</h2>
-                                    <p className="text-sm font-bold text-rose-500 leading-relaxed px-4">
+                                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter italic uppercase leading-none">Acceso<br />Denegado</h2>
+                                    <p className="text-sm font-bold text-rose-500 leading-relaxed px-6">
                                         {message}
                                     </p>
                                 </div>
                                 <Button
                                     variant="secondary"
-                                    className="w-full py-6 rounded-[2rem] border-2 border-slate-100 font-black tracking-widest uppercase"
+                                    className="w-full py-6 rounded-[2rem] border-2 border-slate-100 font-black tracking-widest uppercase text-slate-600"
                                     onClick={() => navigate('/login')}
                                 >
-                                    INTENTAR DE NUEVO
+                                    IR AL LOGIN
                                 </Button>
                             </div>
                         )}

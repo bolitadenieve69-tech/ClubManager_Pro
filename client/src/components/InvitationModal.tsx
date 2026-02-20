@@ -139,7 +139,7 @@ export default function InvitationModal({ isOpen, onClose, onSuccess, member }: 
                                     />
                                 </div>
                                 <Button type="submit" loading={loading} className="w-full py-6 group bg-slate-900 hover:bg-black text-white rounded-2xl" variant="primary">
-                                    GENERAR LINK DE ACCESO
+                                    CREAR INVITACIÓN Y GENERAR LINK
                                 </Button>
                             </form>
                         ) : (
@@ -175,19 +175,32 @@ export default function InvitationModal({ isOpen, onClose, onSuccess, member }: 
                                     <Button
                                         onClick={handleShareWhatsApp}
                                         variant="primary"
-                                        className="w-full py-6 bg-[#25D366] hover:bg-[#128C7E] shadow-xl shadow-emerald-900/10 text-white rounded-2xl group"
+                                        className="w-full py-6 bg-[#25D366] hover:bg-[#128C7E] shadow-xl shadow-emerald-900/10 text-white rounded-2xl group border-none"
                                     >
                                         <div className="flex items-center justify-center gap-2">
                                             <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                                             <span className="font-black uppercase tracking-widest">ENVIAR POR WHATSAPP</span>
                                         </div>
                                     </Button>
+
                                     <button
-                                        onClick={onClose}
-                                        className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
+                                        onClick={() => {
+                                            const publicUrl = (import.meta as any).env.VITE_PUBLIC_URL || window.location.origin;
+                                            navigator.clipboard.writeText(`${publicUrl}/join/${successData.token}`);
+                                            alert("Copiado al portapapeles");
+                                        }}
+                                        className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 transition-colors flex items-center justify-center gap-2"
                                     >
-                                        TERMINAR
+                                        <span className="border-b border-slate-200 hover:border-primary-500 pb-0.5">O copiar enlace manual</span>
                                     </button>
+
+                                    <Button
+                                        onClick={onClose}
+                                        variant="secondary"
+                                        className="w-full py-6 bg-slate-100 text-slate-900 rounded-2xl font-black uppercase tracking-widest shadow-sm hover:bg-slate-200"
+                                    >
+                                        FINALIZAR
+                                    </Button>
                                 </div>
                             </div>
                         )}

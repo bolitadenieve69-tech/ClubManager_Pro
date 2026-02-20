@@ -155,12 +155,19 @@ export default function Members() {
                             Exportar CSV
                         </Button>
                         <Button
-                            variant="primary"
+                            variant="secondary"
+                            className="bg-white border-slate-200 text-slate-700"
                             icon={<UserPlus className="w-4 h-4" />}
-                            onClick={() => setIsInviteModalOpen(true)}
-                            loading={creating}
+                            onClick={() => setIsCreatingManual(!isCreatingManual)}
                         >
-                            INVITAR NUEVO
+                            {isCreatingManual ? "CANCELAR REGISTRO" : "REGISTRO MANUAL"}
+                        </Button>
+                        <Button
+                            variant="primary"
+                            icon={<Mail className="w-4 h-4" />}
+                            onClick={() => setIsInviteModalOpen(true)}
+                        >
+                            ENVIAR INVITACIÓN
                         </Button>
                     </div>
                 </div>

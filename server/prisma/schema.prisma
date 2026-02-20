@@ -41,6 +41,8 @@ model Club {
   supplier_invoices      SupplierInvoice[]
   tournaments            Tournament[]
   users                  User[]
+  min_deposit_cents      Int               @default(0)
+  hold_minutes           Int               @default(10)
   audit_logs             AuditLog[]
 }
 
@@ -67,21 +69,25 @@ model Member {
   user_id        String?
   club           Club    @relation(fields: [club_id], references: [id])
   invitations    Invitation[]
+  bookings       Booking[] @relation("MemberToBooking")
 
   @@unique([club_id, whatsapp_phone])
   @@index([club_id])
 }
 
 model Invitation {
-  id         String   @id @default(uuid())
-  club_id    String
-  token      String   @unique
-  member_id  String
-  status     String   @default("PENDING")
-  expires_at DateTime
-  created_at DateTime @default(now())
-  club       Club     @relation(fields: [club_id], references: [id])
-  member     Member   @relation(fields: [member_id], references: [id])
+  id              String   @id @default(uuid())
+  club_id         String
+  token           String   @unique
+  member_id       String
+  inviter_user_id String?
+  status          String   @default("PENDING") // PENDING, USED, EXPIRED, REVOKED
+  expires_at      DateTime
+  used_at         DateTime?
+  created_at      DateTime @default(now())
+  club            Club     @relation(fields: [club_id], references: [id])
+  member          Member   @relation(fields: [member_id], references: [id])
+  inviter         User?    @relation("InviterUser", fields: [inviter_user_id], references: [id])
 
   @@index([club_id])
 }
@@ -103,14 +109,23 @@ model Booking {
   strategy      String         @default("SPLIT")
   price_cents   Int
   total_cents   Int
-  expires_at    DateTime
-  created_at    DateTime       @default(now())
-  tournament    Tournament?    @relation(fields: [tournament_id], references: [id])
+  hold_expires_at DateTime?
+  source          String         @default("RECEPCION") // PWA, RECEPCION, OWNER
+  amount_total    Int?           @default(0)
+  amount_paid      Int?           @default(0)
+  payment_status  String         @default("PENDIENTE") // PENDING, PARCIAL, PAID, FAILED
+  court_ids       String[]       @default([])
+  member_id       String?
+  created_at      DateTime       @default(now())
+  
+  member          Member?        @relation("MemberToBooking", fields: [member_id], references: [id])
+  tournament      Tournament?    @relation(fields: [tournament_id], references: [id])
   invoice       Invoice?       @relation(fields: [invoice_id], references: [id])
   user          User?          @relation(fields: [user_id], references: [id])
   court         Court          @relation(fields: [court_id], references: [id])
   club          Club           @relation(fields: [club_id], references: [id])
   shares        PaymentShare[]
+  payments      Payment[]
 
   @@index([club_id])
   @@index([court_id, start_at, end_at])
@@ -126,6 +141,19 @@ model PaymentShare {
   paid_at    DateTime?
   created_at DateTime  @default(now())
   booking    Booking   @relation(fields: [booking_id], references: [id])
+
+  @@index([booking_id])
+}
+
+model Payment {
+  id             String    @id @default(uuid())
+  booking_id     String
+  provider       String    @default("BIZUM") // BIZUM, CASH, CARD
+  provider_ref   String?
+  amount_cents   Int
+  status         String    @default("PENDING") // PENDING, SUCCESS, FAILED
+  created_at     DateTime  @default(now())
+  booking        Booking   @relation(fields: [booking_id], references: [id])
 
   @@index([booking_id])
 }
@@ -210,6 +238,7 @@ model User {
   bookings                Booking[]
   tournament_participants TournamentParticipant[]
   club                    Club                    @relation(fields: [club_id], references: [id])
+  sent_invitations        Invitation[]            @relation("InviterUser")
 }
 
 model Court {

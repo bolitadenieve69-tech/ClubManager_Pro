@@ -10,6 +10,207 @@ import { randomUUID } from 'node:crypto';
 
 export const reservationsRouter = Router();
 
+// Socio PWA: Check availability
+reservationsRouter.get(
+    "/availability",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const clubId = req.user?.clubId;
+        const { date, duration, courtCount } = z.object({
+            date: z.string(), // YYYY-MM-DD
+            duration: z.coerce.number().min(30).max(180),
+            courtCount: z.coerce.number().min(1).max(2).default(1)
+        }).parse(req.query);
+
+        const startOfDay = new Date(`${date}T00:00:00`);
+        const endOfDay = new Date(`${date}T23:59:59`);
+
+        const courts = await prisma.court.findMany({ where: { club_id: clubId } });
+        const courtIds = courts.map(c => c.id);
+
+        // Fetch bookings, holds (non-expired), and blocks
+        const bookings = await prisma.booking.findMany({
+            where: {
+                club_id: clubId,
+                status: { in: ["CONFIRMED", "HOLD"] },
+                OR: [
+                    { hold_expires_at: null },
+                    { hold_expires_at: { gt: new Date() } }
+                ],
+                start_at: { gte: startOfDay, lte: endOfDay }
+            }
+        });
+
+        const blocks = await prisma.block.findMany({
+            where: { club_id: clubId, start_at: { lte: endOfDay }, end_at: { gte: startOfDay } }
+        });
+
+        // 10:00 to 22:00 in 30min slots
+        const slots = [];
+        for (let hour = 10; hour < 22; hour++) {
+            for (let min of [0, 30]) {
+                const slotStart = new Date(startOfDay);
+                slotStart.setHours(hour, min, 0, 0);
+                const slotEnd = new Date(slotStart.getTime() + duration * 60000);
+
+                if (slotEnd.getHours() > 22 || (slotEnd.getHours() === 22 && slotEnd.getMinutes() > 0)) continue;
+
+                // For each court, check if available
+                const availableCourts = courtIds.filter(cId => {
+                    const isBooked = bookings.some(b =>
+                        (b.court_id === cId || b.court_ids.includes(cId)) &&
+                        b.start_at < slotEnd && b.end_at > slotStart
+                    );
+                    const isBlocked = blocks.some(b =>
+                        b.court_id === cId && b.start_at < slotEnd && b.end_at > slotStart
+                    );
+                    return !isBooked && !isBlocked;
+                });
+
+                if (availableCourts.length >= courtCount) {
+                    slots.push({
+                        time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
+                        courts: availableCourts.slice(0, courtCount)
+                    });
+                }
+            }
+        }
+
+        res.json({ slots });
+    })
+);
+
+// Socio PWA: Create HOLD
+reservationsRouter.post(
+    "/hold",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const clubId = req.user?.clubId;
+        const userId = req.user?.userId;
+        const { courtIds, startAt, endAt, totalCents } = z.object({
+            courtIds: z.array(z.string()),
+            startAt: z.string().datetime(),
+            endAt: z.string().datetime(),
+            totalCents: z.number()
+        }).parse(req.body);
+
+        const club = await prisma.club.findUnique({ where: { id: clubId! } });
+        const holdMinutes = club?.hold_minutes || 10;
+
+        const booking = await prisma.booking.create({
+            data: {
+                club_id: clubId!,
+                court_id: courtIds[0], // Primary for compatibility
+                court_ids: courtIds,
+                user_id: userId!,
+                start_at: new Date(startAt),
+                end_at: new Date(endAt),
+                status: "HOLD",
+                source: "PWA",
+                amount_total: totalCents,
+                amount_paid: 0,
+                payment_status: "PENDIENTE",
+                hold_expires_at: new Date(Date.now() + holdMinutes * 60000),
+                total_cents: totalCents,
+                price_cents: Math.floor(totalCents / courtIds.length), // Placeholder
+                expires_at: new Date(Date.now() + 24 * 3600000) // General expiry
+            }
+        });
+
+        res.json({ booking });
+    })
+);
+
+
+// Socio PWA: Confirm (Pay in Reception)
+reservationsRouter.post(
+    "/confirm",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const { bookingId } = z.object({ bookingId: z.string() }).parse(req.body);
+
+        const booking = await prisma.booking.update({
+            where: { id: bookingId },
+            data: {
+                status: "CONFIRMED",
+                hold_expires_at: null,
+                payment_status: "PENDIENTE"
+            }
+        });
+
+        res.json({ message: "Reserva confirmada. Paga en recepción al llegar.", booking });
+    })
+);
+
+// Socio PWA: Create Bizum Payment
+reservationsRouter.post(
+    "/payments/bizum/create",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const { bookingId, amountCents } = z.object({
+            bookingId: z.string(),
+            amountCents: z.number()
+        }).parse(req.body);
+
+        const payment = await prisma.payment.create({
+            data: {
+                booking_id: bookingId,
+                amount_cents: amountCents,
+                provider: "BIZUM",
+                status: "PENDING"
+            }
+        });
+
+        // Simulating PSP response
+        res.json({
+            payment,
+            redirectUrl: `https://bizum.sim/pay/${payment.id}?amount=${amountCents}`
+        });
+    })
+);
+
+// Socio PWA: Bizum Webhook (Simulation)
+reservationsRouter.post(
+    "/payments/bizum/webhook",
+    asyncHandler(async (req, res) => {
+        const { paymentId, status, amountCents } = z.object({
+            paymentId: z.string(),
+            status: z.enum(["SUCCESS", "FAILED"]),
+            amountCents: z.number()
+        }).parse(req.body);
+
+        await prisma.$transaction(async (tx) => {
+            const payment = await tx.payment.update({
+                where: { id: paymentId },
+                data: { status }
+            });
+
+            if (status === "SUCCESS") {
+                const booking = await tx.booking.findUnique({
+                    where: { id: payment.booking_id }
+                });
+
+                if (booking) {
+                    const newAmountPaid = (booking.amount_paid || 0) + amountCents;
+                    const isTotal = newAmountPaid >= (booking.amount_total || 0);
+
+                    await tx.booking.update({
+                        where: { id: booking.id },
+                        data: {
+                            amount_paid: newAmountPaid,
+                            payment_status: isTotal ? "PAGADO" : "PARCIAL",
+                            status: "CONFIRMED",
+                            hold_expires_at: null
+                        }
+                    });
+                }
+            }
+        });
+
+        res.json({ received: true });
+    })
+);
+
 const reservationSchema = z.object({
     court_id: z.string().uuid("ID de pista inválido."),
     user_id: z.string().uuid("ID de usuario inválido.").optional().nullable(),

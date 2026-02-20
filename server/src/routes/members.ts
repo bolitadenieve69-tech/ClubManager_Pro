@@ -68,6 +68,7 @@ membersRouter.post(
             data: {
                 club_id: clubId!,
                 member_id: member.id,
+                inviter_user_id: req.user?.userId,
                 token,
                 status: "PENDING",
                 expires_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7) // 7 days
@@ -76,6 +77,40 @@ membersRouter.post(
 
         const inviteUrl = `/join/${token}`;
         res.status(201).json({ invitation, inviteUrl });
+    })
+);
+
+// PWA: Validate invitation without consuming it
+membersRouter.get(
+    "/invitations/:token",
+    asyncHandler(async (req, res) => {
+        const { token } = z.object({ token: z.string() }).parse(req.params);
+
+        const invitation = await prisma.invitation.findUnique({
+            where: { token },
+            include: {
+                club: {
+                    select: { display_name: true, logo_url: true }
+                },
+                member: {
+                    select: { full_name: true }
+                }
+            }
+        });
+
+        if (!invitation) {
+            throw new ApiError(404, "NOT_FOUND", "La invitación no existe.");
+        }
+
+        if (invitation.status !== "PENDING" || invitation.expires_at < new Date()) {
+            throw new ApiError(400, "INVALID_TOKEN", "La invitación ya no es válida o ha expirado.");
+        }
+
+        res.json({
+            valid: true,
+            member: invitation.member,
+            club: invitation.club
+        });
     })
 );
 
@@ -98,10 +133,13 @@ membersRouter.post(
         let userId: string;
 
         await prisma.$transaction(async (tx) => {
-            // 1. Mark invitation as accepted
+            // 1. Mark invitation as used
             await tx.invitation.update({
                 where: { id: invitation.id },
-                data: { status: "ACCEPTED" }
+                data: {
+                    status: "USED",
+                    used_at: new Date()
+                }
             });
 
             // 2. Approve member

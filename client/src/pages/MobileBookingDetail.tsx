@@ -81,11 +81,14 @@ export default function MobileBookingDetail() {
     }, [booking?.status]);
 
     useEffect(() => {
-        if (!booking || booking.status !== 'PENDING_PAYMENT') return;
+        const statusForTimer = ['HOLD', 'PENDING_PAYMENT'];
+        if (!booking || !statusForTimer.includes(booking.status)) return;
 
         const timer = setInterval(() => {
             const now = new Date().getTime();
-            const expiry = new Date(booking.expires_at).getTime();
+            const expiryStr = booking.hold_expires_at || booking.expires_at;
+            if (!expiryStr) return;
+            const expiry = new Date(expiryStr).getTime();
             const diff = expiry - now;
 
             if (diff <= 0) {
@@ -128,15 +131,15 @@ export default function MobileBookingDetail() {
         );
     }
 
-    const bizumCode = `B-${booking.id.slice(0, 8)}`;
-    const myShare = booking.shares?.find((s: any) => s.user_id === JSON.parse(localStorage.getItem('user') || '{}').id) || booking.shares?.[0];
-    const amountToPayInCents = myShare ? myShare.amount : booking.total_cents;
+    const myShare = booking.shares?.find((s: any) => s.user_id === JSON.parse(localStorage.getItem('user') || '{}').id);
+    const amountToPayInCents = myShare ? myShare.amount : (booking.amount_total - (booking.amount_paid || 0));
     const amountToPay = `${(amountToPayInCents / 100).toFixed(2)}€`;
     const bizumNumber = booking.club?.bizum_payee || '+34 600 000 000';
+    const bizumCode = `B-${booking.id.slice(0, 8)}`;
 
     const handleWhatsApp = () => {
         setJustNotified(true);
-        const phone = (booking.club?.bizum_payee || bizumNumber).replace(/\D/g, '');
+        const phone = bizumNumber.replace(/\D/g, '');
         const msg = `Hola! Acabo de hacer un Bizum de ${amountToPay} para la reserva ${bizumCode}.`;
         const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
 

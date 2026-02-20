@@ -176,6 +176,8 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                <Route path="/app/reservar" element={<ProtectedRoute><MobileBook /></ProtectedRoute>} />
+                <Route path="/reservas/nueva" element={<ProtectedRoute><MobileBook /></ProtectedRoute>} />
                 <Route
                     path="/m/book"
                     element={
