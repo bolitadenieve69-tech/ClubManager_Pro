@@ -74,7 +74,7 @@ membersRouter.post(
             }
         });
 
-        const inviteUrl = `/m/accept/${token}`;
+        const inviteUrl = `/join/${token}`;
         res.status(201).json({ invitation, inviteUrl });
     })
 );

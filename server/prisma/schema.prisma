@@ -75,7 +75,10 @@ model Booking {
   id            String         @id @default(uuid())
   club_id       String
   court_id      String
-  user_id       String
+  user_id       String?
+  guest_name      String?
+  phone           String?
+  payment_method  String?
   invoice_id    String?
   tournament_id String?
   recurring_id  String?
@@ -89,7 +92,7 @@ model Booking {
   created_at    DateTime       @default(now())
   tournament    Tournament?    @relation(fields: [tournament_id], references: [id])
   invoice       Invoice?       @relation(fields: [invoice_id], references: [id])
-  user          User           @relation(fields: [user_id], references: [id])
+  user          User?          @relation(fields: [user_id], references: [id])
   court         Court          @relation(fields: [court_id], references: [id])
   club          Club           @relation(fields: [club_id], references: [id])
   shares        PaymentShare[]
@@ -101,7 +104,7 @@ model Booking {
 model PaymentShare {
   id         String    @id @default(uuid())
   booking_id String
-  user_id    String
+  user_id    String?
   amount     Int
   status     String    @default("INITIATED")
   proof_note String?

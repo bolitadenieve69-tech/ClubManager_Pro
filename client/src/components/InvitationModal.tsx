@@ -1,21 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UserPlus, CheckCircle, Smartphone } from 'lucide-react';
+import { X, UserPlus, CheckCircle, Smartphone, Send, MessageCircle, Loader2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { apiFetch } from "../lib/api";
+
+interface Member {
+    id: string;
+    full_name: string;
+    whatsapp_phone: string;
+}
 
 interface InvitationModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    member?: Member | null;
 }
 
-export default function InvitationModal({ isOpen, onClose, onSuccess }: InvitationModalProps) {
+export default function InvitationModal({ isOpen, onClose, onSuccess, member }: InvitationModalProps) {
     const [fullName, setFullName] = useState('');
     const [whatsappPhone, setWhatsappPhone] = useState('');
     const [loading, setLoading] = useState(false);
     const [successData, setSuccessData] = useState<any>(null);
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        if (member) {
+            setFullName(member.full_name);
+            setWhatsappPhone(member.whatsapp_phone);
+            handleExternalInvite(member);
+        } else {
+            setFullName('');
+            setWhatsappPhone('');
+            setSuccessData(null);
+            setMessage('');
+        }
+    }, [member, isOpen]);
+
+    const handleExternalInvite = async (m: Member) => {
+        setLoading(true);
+        try {
+            const data = await apiFetch<any>('/members/invitations', {
+                method: 'POST',
+                body: JSON.stringify({
+                    fullName: m.full_name,
+                    whatsappPhone: m.whatsapp_phone
+                })
+            });
+            setSuccessData(data);
+            const publicUrl = (import.meta as any).env.VITE_PUBLIC_URL || window.location.origin;
+            const inviteLink = `${publicUrl}${data.inviteUrl}`;
+            setMessage(`¡Hola ${m.full_name}! 👋 Bienvenido a nuestro club. Ya puedes reservar pistas y pagar desde tu móvil aquí: ${inviteLink}`);
+        } catch (err) {
+            console.error("Error creating invitation:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -26,6 +68,9 @@ export default function InvitationModal({ isOpen, onClose, onSuccess }: Invitati
                 body: JSON.stringify({ fullName, whatsappPhone })
             });
             setSuccessData(data);
+            const publicUrl = (import.meta as any).env.VITE_PUBLIC_URL || window.location.origin;
+            const inviteLink = `${publicUrl}${data.inviteUrl}`;
+            setMessage(`¡Hola ${fullName}! 👋 Bienvenido a nuestro club. Ya puedes reservar pistas y pagar desde tu móvil aquí: ${inviteLink}`);
             onSuccess();
         } catch (err) {
             console.error("Error creating invitation:", err);
@@ -35,10 +80,10 @@ export default function InvitationModal({ isOpen, onClose, onSuccess }: Invitati
     };
 
     const handleShareWhatsApp = () => {
-        if (!successData) return;
-        const inviteLink = `${window.location.origin}${successData.inviteUrl}`;
-        const msg = `¡Hola ${fullName}! Te invito a unirte a ClubManager Pro. Puedes acceder aquí para configurar tu cuenta: ${inviteLink}`;
-        window.open(`https://wa.me/${whatsappPhone.replace(/\+/g, '').replace(/\s+/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+        if (!successData || !message) return;
+        const cleanPhone = whatsappPhone.replace(/\D/g, '');
+        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+        window.open(waUrl, '_blank');
     };
 
     return (
@@ -57,7 +102,9 @@ export default function InvitationModal({ isOpen, onClose, onSuccess }: Invitati
                                     <UserPlus className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black text-slate-900 tracking-tight">Nueva Invitación</h3>
+                                    <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                                        {member ? 'Enviar Invitación' : 'Nueva Invitación'}
+                                    </h3>
                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Acceso para Miembros</p>
                                 </div>
                             </div>
@@ -96,27 +143,48 @@ export default function InvitationModal({ isOpen, onClose, onSuccess }: Invitati
                                 </Button>
                             </form>
                         ) : (
-                            <div className="p-8 space-y-8 text-center">
+                            <div className="p-8 space-y-6 text-center">
                                 <motion.div
                                     initial={{ scale: 0 }}
                                     animate={{ scale: 1 }}
-                                    className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto rotate-3"
+                                    className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto rotate-3"
                                 >
-                                    <CheckCircle className="w-10 h-10" />
+                                    <CheckCircle className="w-8 h-8" />
                                 </motion.div>
                                 <div>
-                                    <h4 className="text-xl font-black text-slate-900 tracking-tight">¡Invitación Creada!</h4>
-                                    <p className="text-slate-500 text-sm font-medium mt-2 leading-relaxed px-4">
-                                        El enlace de acceso para <strong>{fullName}</strong> ha sido generado correctamente.
+                                    <h4 className="text-xl font-black text-slate-900 tracking-tight">¡Invitación Lista!</h4>
+                                    <p className="text-slate-500 text-xs font-medium mt-1 leading-relaxed">
+                                        Revisa y edita el mensaje para <strong>{fullName}</strong>:
                                     </p>
                                 </div>
-                                <div className="space-y-3">
-                                    <Button onClick={handleShareWhatsApp} variant="primary" className="w-full py-6 bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-900/20 text-white rounded-2xl">
-                                        ENVIAR POR WHATSAPP
+
+                                <div className="space-y-2 text-left">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1.5">
+                                        <MessageCircle className="w-3 h-3" /> Mensaje Personalizado
+                                    </label>
+                                    <textarea
+                                        value={message}
+                                        onChange={(e) => setMessage(e.target.value)}
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm text-slate-600 focus:bg-white focus:border-indigo-500/20 focus:ring-0 transition-all shadow-inner min-h-[120px] resize-none outline-none font-medium leading-relaxed"
+                                        placeholder="Escribe el mensaje aquí..."
+                                        title="Mensaje de WhatsApp"
+                                    />
+                                </div>
+
+                                <div className="space-y-3 pt-2">
+                                    <Button
+                                        onClick={handleShareWhatsApp}
+                                        variant="primary"
+                                        className="w-full py-6 bg-[#25D366] hover:bg-[#128C7E] shadow-xl shadow-emerald-900/10 text-white rounded-2xl group"
+                                    >
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                            <span className="font-black uppercase tracking-widest">ENVIAR POR WHATSAPP</span>
+                                        </div>
                                     </Button>
                                     <button
                                         onClick={onClose}
-                                        className="w-full py-4 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
+                                        className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
                                     >
                                         TERMINAR
                                     </button>
@@ -129,3 +197,4 @@ export default function InvitationModal({ isOpen, onClose, onSuccess }: Invitati
         </AnimatePresence>
     );
 }
+

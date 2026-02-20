@@ -23,6 +23,8 @@ export default function MobileBook() {
     const [slots, setSlots] = useState<any[]>([]);
     const [selectedSlot, setSelectedSlot] = useState<any>(null);
     const [strategy, setStrategy] = useState<'SPLIT' | 'SINGLE'>('SPLIT');
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [recurringWeeks, setRecurringWeeks] = useState(1);
 
     // Load initial data
     useEffect(() => {
@@ -80,7 +82,12 @@ export default function MobileBook() {
                     user_id: user?.id,
                     start_time: selectedSlot.start,
                     end_time: selectedSlot.end,
-                    strategy: strategy
+                    strategy: strategy,
+                    recurring: isRecurring ? {
+                        frequency: 'weekly',
+                        interval: 1,
+                        weeks: recurringWeeks
+                    } : undefined
                 })
             });
 
@@ -138,7 +145,7 @@ export default function MobileBook() {
                                     <Badge variant="neutral" className="bg-slate-50 border-slate-100 text-[8px]">{format(new Date(date), 'MMMM yyyy')}</Badge>
                                 </div>
                                 <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6 no-scrollbar">
-                                    {[...Array(30)].map((_, offset) => {
+                                    {[...Array(15)].map((_, offset) => {
                                         const d = addDays(new Date(), offset);
                                         const iso = d.toISOString().split('T')[0];
                                         const active = date === iso;
@@ -281,6 +288,67 @@ export default function MobileBook() {
                                 </div>
                             </section>
 
+                            <section className="space-y-6">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] flex items-center gap-2">
+                                    <Star className="w-4 h-4 text-primary-500" /> Repetición (Opcional)
+                                </h3>
+                                <div className="p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] space-y-6 shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <p className="text-xs font-black uppercase text-slate-900 tracking-tight">Hacer Recurrente</p>
+                                            <p className="text-[10px] text-slate-400 font-medium italic">¿Reservar el mismo día cada semana?</p>
+                                        </div>
+                                        <button
+                                            title="Activar reserva recurrente"
+                                            onClick={() => {
+                                                setIsRecurring(!isRecurring);
+                                                if (!isRecurring && recurringWeeks === 1) setRecurringWeeks(4);
+                                            }}
+                                            className={cn(
+                                                "w-14 h-8 rounded-full transition-all relative flex items-center px-1",
+                                                isRecurring ? "bg-primary-500" : "bg-slate-200"
+                                            )}
+                                        >
+                                            <motion.div
+                                                animate={{ x: isRecurring ? 24 : 0 }}
+                                                className="w-6 h-6 bg-white rounded-full shadow-md"
+                                            />
+                                        </button>
+                                    </div>
+
+                                    <AnimatePresence>
+                                        {isRecurring && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="pt-6 border-t border-slate-50">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Durante cuántas semanas:</p>
+                                                    <div className="grid grid-cols-4 gap-3">
+                                                        {[1, 4, 8, 12].map((w) => (
+                                                            <button
+                                                                key={w}
+                                                                onClick={() => setRecurringWeeks(w)}
+                                                                className={cn(
+                                                                    "py-3 rounded-xl border-2 text-[10px] font-black transition-all",
+                                                                    recurringWeeks === w
+                                                                        ? "bg-slate-900 border-slate-900 text-white"
+                                                                        : "bg-white border-slate-100 text-slate-400"
+                                                                )}
+                                                            >
+                                                                {w} sem.
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </section>
+
                             <div className="flex gap-4 pt-6">
                                 <Button variant="secondary" className="flex-1 py-7 rounded-[2rem]" onClick={() => setStep(1)}>VOLVER</Button>
                                 <Button variant="primary" className="flex-2 py-7 px-10 rounded-[2rem]" onClick={() => setStep(3)}>RESUMEN</Button>
@@ -320,6 +388,12 @@ export default function MobileBook() {
                                             <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">MODALIDAD</span>
                                             <span className="text-sm font-black">{strategy === 'SPLIT' ? 'DIVIDIDO (BIZUM)' : 'TOTAL (BIZUM)'}</span>
                                         </div>
+                                        {isRecurring && (
+                                            <div className="flex justify-between items-center bg-primary-500/20 p-4 rounded-2xl backdrop-blur-sm border border-primary-500/20">
+                                                <span className="text-[10px] font-black uppercase text-primary-400 tracking-widest">REPETICIÓN</span>
+                                                <span className="text-sm font-black text-primary-400">Semanal ({recurringWeeks} semanas)</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="pt-8 border-t border-white/10 flex flex-col items-center gap-2">

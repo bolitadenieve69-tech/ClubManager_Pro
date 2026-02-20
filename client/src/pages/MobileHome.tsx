@@ -1,14 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import MobileLayout from '../components/MobileLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { PlusCircle, Calendar, History, Star, TrendingUp, Zap, ChevronRight } from 'lucide-react';
+import { PlusCircle, Calendar, History, Star, TrendingUp, Zap, ChevronRight, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { apiFetch } from '../lib/api';
 
 export default function MobileHome() {
     const navigate = useNavigate();
+    const [stats, setStats] = useState({ reservations: 0, matches: 0 });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                // Endpoint defined in users.ts or analytics.ts typically
+                const data = await apiFetch<any>('/users/me/stats');
+                setStats({
+                    reservations: data.activeReservations || 0,
+                    matches: data.playedMatches || 0
+                });
+            } catch (err) {
+                console.error("Error fetching stats:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
 
     return (
         <MobileLayout title="ClubManager Pro">
@@ -56,10 +77,12 @@ export default function MobileHome() {
                         className="p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-premium flex flex-col items-center text-center gap-3 group transition-all cursor-pointer"
                     >
                         <div className="p-4 bg-primary-50 rounded-2xl text-primary-600 group-hover:rotate-12 transition-transform">
-                            <Calendar className="w-6 h-6" />
+                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Calendar className="w-6 h-6" />}
                         </div>
                         <div>
-                            <span className="block text-3xl font-black text-slate-900 tracking-tighter leading-none">0</span>
+                            <span className="block text-3xl font-black text-slate-900 tracking-tighter leading-none">
+                                {loading ? '...' : stats.reservations}
+                            </span>
                             <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mt-2 block">Reservas</span>
                         </div>
                     </motion.div>
@@ -72,10 +95,12 @@ export default function MobileHome() {
                         className="p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-premium flex flex-col items-center text-center gap-3 group transition-all cursor-pointer"
                     >
                         <div className="p-4 bg-amber-50 rounded-2xl text-amber-500 group-hover:rotate-12 transition-transform">
-                            <Star className="w-6 h-6" />
+                            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Star className="w-6 h-6" />}
                         </div>
                         <div>
-                            <span className="block text-3xl font-black text-slate-900 tracking-tighter leading-none">12</span>
+                            <span className="block text-3xl font-black text-slate-900 tracking-tighter leading-none">
+                                {loading ? '...' : stats.matches}
+                            </span>
                             <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mt-2 block">Partidos</span>
                         </div>
                     </motion.div>

@@ -25,11 +25,12 @@ const BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || "/api";
 
 export async function apiFetch<T>(
     path: string,
-    options: RequestInit = {}
+    options: RequestInit & { responseType?: "json" | "blob" } = {}
 ): Promise<T> {
-    const headers = new Headers(options.headers);
+    const { responseType = "json", ...fetchOptions } = options;
+    const headers = new Headers(fetchOptions.headers);
 
-    if (options.body && !headers.has("Content-Type")) {
+    if (fetchOptions.body && !headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json");
     }
 
@@ -39,17 +40,15 @@ export async function apiFetch<T>(
     }
 
     const res = await fetch(`${BASE_URL}${path}`, {
-        ...options,
+        ...fetchOptions,
         headers,
     });
 
-    const contentType = res.headers.get("content-type") || "";
-    const isJson = contentType.includes("application/json");
-
-    const data = isJson ? await res.json().catch(() => null) : null;
-
     if (!res.ok) {
-        const payload = data as ApiErrorPayload | null;
+        const contentType = res.headers.get("content-type") || "";
+        const isJson = contentType.includes("application/json");
+        const errorData = isJson ? await res.json().catch(() => null) : null;
+        const payload = errorData as ApiErrorPayload | null;
 
         if (payload?.error?.message && payload?.error?.code) {
             throw new ApiError(payload.error.code, payload.error.message, payload.error.details);
@@ -61,6 +60,15 @@ export async function apiFetch<T>(
             { status: res.status }
         );
     }
+
+    if (responseType === "blob") {
+        return (await res.blob()) as any;
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
+
+    const data = isJson ? await res.json().catch(() => null) : null;
 
     return (data ?? ({} as T)) as T;
 }

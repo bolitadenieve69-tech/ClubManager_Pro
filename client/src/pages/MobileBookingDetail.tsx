@@ -17,6 +17,7 @@ export default function MobileBookingDetail() {
     const [loading, setLoading] = useState(true);
     const [timeLeft, setTimeLeft] = useState<string>('');
     const [justNotified, setJustNotified] = useState(false);
+    const [joining, setJoining] = useState(false);
 
     const fetchBooking = async (silent = false) => {
         if (!silent) setLoading(true);
@@ -31,8 +32,42 @@ export default function MobileBookingDetail() {
     };
 
     useEffect(() => {
-        fetchBooking();
+        const init = async () => {
+            await fetchBooking();
+        };
+        init();
     }, [id]);
+
+    useEffect(() => {
+        const attemptJoin = async () => {
+            const userStr = localStorage.getItem('user');
+            if (!userStr || !booking || booking.strategy !== 'SPLIT') return;
+            const user = JSON.parse(userStr);
+
+            // If user is owner, no need to join
+            if (booking.user_id === user.id) return;
+
+            // Check if user already has a share
+            const hasShare = booking.shares?.some((s: any) => s.user_id === user.id);
+            if (hasShare) return;
+
+            // Attempt to join
+            setJoining(true);
+            try {
+                await apiFetch(`/reservations/${id}/join`, { method: 'POST' });
+                // Re-fetch booking to show the updated shares
+                await fetchBooking(true);
+            } catch (err) {
+                console.error("Error joining booking:", err);
+            } finally {
+                setJoining(false);
+            }
+        };
+
+        if (booking && !joining) {
+            attemptJoin();
+        }
+    }, [booking?.id, joining]);
 
     // Polling for status confirmation
     useEffect(() => {
@@ -101,11 +136,19 @@ export default function MobileBookingDetail() {
 
     const handleWhatsApp = () => {
         setJustNotified(true);
+        const phone = (booking.club?.bizum_payee || bizumNumber).replace(/\D/g, '');
         const msg = `Hola! Acabo de hacer un Bizum de ${amountToPay} para la reserva ${bizumCode}.`;
-        window.open(`https://wa.me/${bizumNumber.replace(/\+/g, '').replace(/\s+/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
 
-        // Auto-refresh once after a while to see if admin confirmed
+        window.open(url, '_blank');
         setTimeout(() => fetchBooking(true), 5000);
+    };
+
+    const handleInvite = () => {
+        const inviteLink = `${window.location.origin}/m/booking/${booking.id}`;
+        const msg = `¡Hola! Te invito a unirte a mi reserva en ${booking.court?.name}. Puedes pagar tu parte aquí: ${inviteLink}`;
+        const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
     };
 
     return (
@@ -249,6 +292,17 @@ export default function MobileBookingDetail() {
                                 </div>
                             ))}
                         </div>
+
+                        {booking.status === 'PENDING_PAYMENT' && (
+                            <Button
+                                variant="secondary"
+                                onClick={handleInvite}
+                                className="w-full py-6 mt-4 border-2 border-primary-100 text-primary-600 rounded-2xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] hover:bg-primary-50 transition-all shadow-sm"
+                            >
+                                <Share2 className="w-4 h-4" />
+                                INVITAR AMIGOS A PAGAR
+                            </Button>
+                        )}
                     </section>
                 )}
 

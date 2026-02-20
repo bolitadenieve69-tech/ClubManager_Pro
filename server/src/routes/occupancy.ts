@@ -102,7 +102,7 @@ async function getOccupancy(clubId: string, date: Date, courtId?: string) {
     ]);
 
     return [
-        ...bookings.map(b => ({ type: "BOOKING", ...b, title: b.user.email })),
+        ...bookings.map(b => ({ type: "BOOKING", ...b, title: b.user?.email || b.guest_name || "Reserva" })),
         ...blocks.map(b => ({ type: "BLOCK", ...b, title: b.reason || "Bloqueo" })),
         ...classes.map(c => ({ type: "CLASS", ...c, title: c.title }))
     ];

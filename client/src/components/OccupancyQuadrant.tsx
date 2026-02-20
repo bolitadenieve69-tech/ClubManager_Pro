@@ -101,6 +101,7 @@ export default function OccupancyQuadrant() {
                         size="sm"
                         className="w-10 h-10 p-0 rounded-xl hover:bg-white hover:shadow-sm"
                         onClick={() => setDate(format(subDays(parseISO(date), 1), 'yyyy-MM-dd'))}
+                        title="Día anterior"
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </Button>
@@ -109,6 +110,7 @@ export default function OccupancyQuadrant() {
                         <input
                             type="date"
                             value={date}
+                            title="Seleccionar fecha"
                             onChange={(e) => setDate(e.target.value)}
                             className="bg-transparent border-none py-1.5 px-2 text-sm font-black text-slate-700 focus:outline-none focus:ring-0 cursor-pointer uppercase tracking-widest"
                         />
@@ -119,6 +121,7 @@ export default function OccupancyQuadrant() {
                         size="sm"
                         className="w-10 h-10 p-0 rounded-xl hover:bg-white hover:shadow-sm"
                         onClick={() => setDate(format(addDays(parseISO(date), 1), 'yyyy-MM-dd'))}
+                        title="Día siguiente"
                     >
                         <ChevronRight className="w-5 h-5" />
                     </Button>

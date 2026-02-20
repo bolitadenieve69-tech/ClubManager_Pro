@@ -10,7 +10,8 @@ export const billingRouter = Router();
 const billingQuerySchema = z.object({
     from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    includeCancelled: z.boolean().optional().default(false)
+    includeCancelled: z.boolean().optional().default(false),
+    payment_method: z.enum(["CASH", "CARD"]).optional()
 });
 
 // GET /api/billing/clients/summary
@@ -33,6 +34,10 @@ billingRouter.post(
 
         if (!parsed.includeCancelled) {
             whereClause.status = { not: "CANCELLED" };
+        }
+
+        if (parsed.payment_method) {
+            whereClause.payment_method = parsed.payment_method;
         }
 
         const reservations = await prisma.booking.findMany({
@@ -111,6 +116,10 @@ billingRouter.post(
 
         if (!parsed.includeCancelled) {
             whereClause.status = { not: "CANCELLED" };
+        }
+
+        if (parsed.payment_method) {
+            whereClause.payment_method = parsed.payment_method;
         }
 
         const reservations = await prisma.booking.findMany({

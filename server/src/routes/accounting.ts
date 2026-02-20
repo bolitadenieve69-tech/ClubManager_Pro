@@ -95,6 +95,34 @@ accountingRouter.get(
         const fiscalIncome = calculateVAT(incomeTotal);
         const fiscalExpense = calculateVAT(expenseTotal);
 
+        // 4. Fetch bookings by payment method for breakdown
+        const confirmedBookings = await prisma.booking.findMany({
+            where: {
+                club_id: clubId,
+                start_at: { gte: startDate, lte: endDate },
+                status: { not: "CANCELLED" }
+            },
+            select: { payment_method: true, total_cents: true }
+        });
+
+        const incomeByMethod: Record<string, { total: number; count: number }> = {
+            CASH: { total: 0, count: 0 },
+            CARD: { total: 0, count: 0 },
+            UNKNOWN: { total: 0, count: 0 }
+        };
+
+        for (const b of confirmedBookings) {
+            const key = b.payment_method || "UNKNOWN";
+            if (!incomeByMethod[key]) incomeByMethod[key] = { total: 0, count: 0 };
+            incomeByMethod[key].total += b.total_cents / 100;
+            incomeByMethod[key].count += 1;
+        }
+
+        // Round totals
+        for (const key of Object.keys(incomeByMethod)) {
+            incomeByMethod[key].total = Number(incomeByMethod[key].total.toFixed(2));
+        }
+
         res.json({
             period,
             range: { start: startDate, end: endDate },
@@ -112,6 +140,7 @@ accountingRouter.get(
                 balance: Number(((internalIncomeTotal + internalExpenseTotal) / 100).toFixed(2)),
                 count: internalMovements.length
             },
+            income_by_method: incomeByMethod,
             balance: Number(((incomeTotal - expenseTotal + internalIncomeTotal + internalExpenseTotal) / 100).toFixed(2)),
             vat_result: Number((fiscalIncome.vat - fiscalExpense.vat).toFixed(2))
         });

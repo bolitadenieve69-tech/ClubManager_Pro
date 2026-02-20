@@ -212,32 +212,32 @@ tournamentsRouter.patch(
         const match = await prisma.tournamentMatch.findUnique({ where: { id: matchId as string } });
         if (!match) throw new ApiError(404, "NOT_FOUND", "Partido no encontrado");
 
+        const oldScore12 = match.score_12 || 0;
+        const oldScore34 = match.score_34 || 0;
+
         // Update match and participants in transaction
         await prisma.$transaction(async (tx) => {
-            // If there were old scores, we should revert them. (Simplified: assuming fresh entry)
-            // Ideally: diff between old and new
-
             await tx.tournamentMatch.update({
                 where: { id: matchId as string },
                 data: { score_12, score_34 }
             });
 
-            // Update individual player points
+            // Revert old points and add new points for all 4 players
             await tx.tournamentParticipant.update({
                 where: { id: match.player1_id },
-                data: { total_points: { increment: score_12 } }
+                data: { total_points: { increment: score_12 - oldScore12 } }
             });
             await tx.tournamentParticipant.update({
                 where: { id: match.player2_id },
-                data: { total_points: { increment: score_12 } }
+                data: { total_points: { increment: score_12 - oldScore12 } }
             });
             await tx.tournamentParticipant.update({
                 where: { id: match.player3_id },
-                data: { total_points: { increment: score_34 } }
+                data: { total_points: { increment: score_34 - oldScore34 } }
             });
             await tx.tournamentParticipant.update({
                 where: { id: match.player4_id },
-                data: { total_points: { increment: score_34 } }
+                data: { total_points: { increment: score_34 - oldScore34 } }
             });
         });
 

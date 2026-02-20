@@ -166,6 +166,7 @@ function App() {
                 />
 
                 {/* Rutas Móviles (PWA) */}
+                <Route path="/join/:token" element={<MobileAcceptInvite />} />
                 <Route path="/m/accept/:token" element={<MobileAcceptInvite />} />
                 <Route
                     path="/m"

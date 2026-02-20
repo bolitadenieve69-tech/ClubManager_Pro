@@ -24,6 +24,7 @@ export interface AccountingSummary {
         balance: number;
         count: number;
     };
+    income_by_method: Record<string, { total: number; count: number }>;
     balance: number; // Global balance
     vat_result: number;
 }
@@ -44,7 +45,9 @@ export const accountingApi = {
         if (params.year) queryParams.append("year", params.year.toString());
         if (params.value) queryParams.append("value", params.value.toString());
 
-        const data = await apiFetch<Blob>(`/accounting/export?${queryParams.toString()}`);
+        const data = await apiFetch<Blob>(`/accounting/export?${queryParams.toString()}`, {
+            responseType: "blob"
+        });
 
         // Create download link
         const url = window.URL.createObjectURL(new Blob([data]));

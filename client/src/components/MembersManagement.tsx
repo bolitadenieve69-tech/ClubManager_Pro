@@ -20,6 +20,7 @@ export default function MembersManagement() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
     const fetchMembers = async () => {
         try {
@@ -35,6 +36,16 @@ export default function MembersManagement() {
     useEffect(() => {
         fetchMembers();
     }, []);
+
+    const handleSendInvitation = (member: Member) => {
+        setSelectedMember(member);
+        setIsInviteModalOpen(true);
+    };
+
+    const handleNewInvitation = () => {
+        setSelectedMember(null);
+        setIsInviteModalOpen(true);
+    };
 
     const filteredMembers = members.filter(m =>
         m.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -61,7 +72,7 @@ export default function MembersManagement() {
                     variant="primary"
                     size="sm"
                     icon={<UserPlus className="w-4 h-4" />}
-                    onClick={() => setIsInviteModalOpen(true)}
+                    onClick={handleNewInvitation}
                     title="Invitar nuevo miembro"
                 >
                     INVITAR
@@ -76,9 +87,9 @@ export default function MembersManagement() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar por nombre o ID..."
+                    placeholder="Buscar por nombre o teléfono..."
                     className="block w-full pl-11 pr-4 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-black text-slate-700 placeholder:text-slate-300 focus:bg-white focus:border-primary-500/20 focus:ring-0 transition-all shadow-inner"
-                    title="Buscar miembros"
+                    title="Buscar por nombre o teléfono"
                 />
             </div>
 
@@ -116,6 +127,7 @@ export default function MembersManagement() {
                                     size="sm"
                                     className="h-10 w-10 p-0 rounded-xl hover:bg-primary-50"
                                     title={`Enviar invitación a ${member.full_name}`}
+                                    onClick={() => handleSendInvitation(member)}
                                 >
                                     <Send className="w-4 h-4 text-slate-300 group-hover:text-primary-600 transition-colors" />
                                 </Button>
@@ -127,9 +139,14 @@ export default function MembersManagement() {
 
             <InvitationModal
                 isOpen={isInviteModalOpen}
-                onClose={() => setIsInviteModalOpen(false)}
+                onClose={() => {
+                    setIsInviteModalOpen(false);
+                    setSelectedMember(null);
+                }}
                 onSuccess={() => fetchMembers()}
+                member={selectedMember}
             />
         </Card>
     );
 }
+

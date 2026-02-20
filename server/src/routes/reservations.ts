@@ -12,13 +12,27 @@ export const reservationsRouter = Router();
 
 const reservationSchema = z.object({
     court_id: z.string().uuid("ID de pista inválido."),
-    user_id: z.string().uuid("ID de usuario inválido."),
-    start_time: z.string().datetime("Fecha de inicio inválida."),
-    end_time: z.string().datetime("Fecha de fin inválida."),
-    strategy: z.enum(["SINGLE", "SPLIT"]).default("SINGLE")
+    user_id: z.string().uuid("ID de usuario inválido.").optional().nullable(),
+    guest_name: z.string().min(1).optional(),
+    phone: z.string().min(1).optional(),
+    payment_method: z.enum(["CASH", "CARD"]).optional(),
+    start_time: z.string().datetime("Fecha de inicio inválida.").optional(),
+    end_time: z.string().datetime("Fecha de fin inválida.").optional(),
+    start_at: z.string().datetime().optional(),
+    end_at: z.string().datetime().optional(),
+    strategy: z.enum(["SINGLE", "SPLIT"]).default("SINGLE"),
+    recurring: z.object({
+        frequency: z.enum(['weekly']),
+        interval: z.number().default(1),
+        weeks: z.number().min(1).max(12)
+    }).optional()
 }).refine(data => {
-    const start = new Date(data.start_time);
-    const end = new Date(data.end_time);
+    const startStr = data.start_time || data.start_at;
+    const endStr = data.end_time || data.end_at;
+    if (!startStr || !endStr) return false;
+
+    const start = new Date(startStr);
+    const end = new Date(endStr);
     if (start >= end) return false;
 
     const isSameDay = start.getFullYear() === end.getFullYear() &&
@@ -65,8 +79,12 @@ reservationsRouter.post(
         const clubId = req.user?.clubId;
         const parsed = reservationSchema.parse(req.body);
 
-        const start = new Date(parsed.start_time);
-        const end = new Date(parsed.end_time);
+        const startStr = parsed.start_time || parsed.start_at;
+        const endStr = parsed.end_time || parsed.end_at;
+        if (!startStr || !endStr) throw new ApiError(400, "VALIDATION_ERROR", "Fechas de inicio y fin son obligatorias.");
+
+        const start = new Date(startStr);
+        const end = new Date(endStr);
 
         const allPrices = await prisma.price.findMany({
             where: { club_id: clubId, court_id: parsed.court_id }
@@ -105,8 +123,12 @@ reservationsRouter.post(
         const clubId = req.user?.clubId;
         const parsed = reservationSchema.parse(req.body);
 
-        const start = new Date(parsed.start_time);
-        const end = new Date(parsed.end_time);
+        const startStr = parsed.start_time || parsed.start_at;
+        const endStr = parsed.end_time || parsed.end_at;
+        if (!startStr || !endStr) throw new ApiError(400, "VALIDATION_ERROR", "Fechas de inicio y fin son obligatorias.");
+
+        const start = new Date(startStr);
+        const end = new Date(endStr);
 
         // 1. Validate court
         const court = await prisma.court.findFirst({
@@ -167,97 +189,177 @@ reservationsRouter.post(
         });
         const totalPrice = pricingResult.totalCents;
 
-        // 4. Transaction: Create Invoice (optional) + Reservation + Shares
-        const { reservation, invoice } = await prisma.$transaction(async (tx) => {
-            const txClub = await tx.club.findUnique({
-                where: { id: clubId },
-                select: { invoice_counter: true }
-            });
-            if (!txClub) throw new ApiError(404, "NOT_FOUND", "Club no encontrado.");
+        // Recurring logic
+        let occurrences = [{ start, end }];
+        if (parsed.recurring) {
+            const rules: RecurringRule = {
+                frequency: parsed.recurring.frequency,
+                interval: parsed.recurring.interval,
+                weekdays: [start.getDay()],
+                endCondition: 'count',
+                maxOccurrences: parsed.recurring.weeks
+            };
+            const generated = generateOccurrences(start, end, rules);
+            occurrences = generated.map(o => ({ start: o.start, end: o.end }));
+        }
 
-            const invoiceNumber = txClub.invoice_counter;
+        const recurringId = parsed.recurring ? randomUUID() : null;
 
-            const newInvoice = await tx.invoice.create({
-                data: {
-                    club_id: clubId!,
-                    number: invoiceNumber,
-                    total_cents: totalPrice,
-                    status: "ISSUED",
-                    items: {
-                        create: [{
-                            description: `Reserva de pista: ${court.name}`,
-                            quantity: 1,
-                            unit_price: totalPrice,
-                            total_price: totalPrice,
-                        }]
-                    }
+        // 4. Transaction: Create everything for each occurrence
+        const results = await prisma.$transaction(async (tx) => {
+            const createdBookings = [];
+
+            for (const occ of occurrences) {
+                // Validate overlaps for each
+                const overlapping = await tx.booking.findFirst({
+                    where: {
+                        court_id: parsed.court_id,
+                        status: "CONFIRMED",
+                        OR: [
+                            {
+                                start_at: { lt: occ.end },
+                                end_at: { gt: occ.start },
+                            },
+                        ],
+                    },
+                });
+
+                if (overlapping) {
+                    throw new ApiError(409, "CONFLICT", `La pista ya está reservada el día ${occ.start.toLocaleDateString()} en este tramo horario.`);
                 }
-            });
 
-            // Lógica de expiración: 2 horas para PWA/BIZUM, 24h para el resto
-            const isGuestBooking = req.user?.role === "USER";
-            const expiryTime = isGuestBooking ? 2 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+                const txClub = await tx.club.findUnique({
+                    where: { id: clubId },
+                    select: { invoice_counter: true }
+                });
+                if (!txClub) throw new ApiError(404, "NOT_FOUND", "Club no encontrado.");
 
-            const newReservation = await tx.booking.create({
-                data: {
-                    club_id: clubId!,
-                    court_id: parsed.court_id,
-                    user_id: parsed.user_id,
-                    invoice_id: newInvoice.id,
-                    start_at: start,
-                    end_at: end,
-                    total_cents: totalPrice,
-                    price_cents: Math.floor(totalPrice / 4),
-                    strategy: parsed.strategy,
-                    status: "PENDING_PAYMENT",
-                    expires_at: new Date(Date.now() + expiryTime)
-                },
-                include: {
-                    court: { select: { name: true } },
-                    user: { select: { email: true, full_name: true } },
-                }
-            });
+                const invoiceNumber = txClub.invoice_counter;
 
-            // Create Payment Shares
-            if (parsed.strategy === "SPLIT") {
-                const shareAmount = Math.floor(totalPrice / 4);
-                const sharesData = [];
-                for (let i = 0; i < 4; i++) {
-                    sharesData.push({
-                        booking_id: newReservation.id,
-                        user_id: parsed.user_id, // Placeholder: all to creator initially
-                        amount: shareAmount,
-                        status: i === 0 ? "INITIATED" : "INITIATED" // Creator initiated their share
-                    });
-                }
-                await tx.paymentShare.createMany({ data: sharesData });
-            } else {
-                // SINGLE strategy: 1 share for the full amount
-                await tx.paymentShare.create({
+                const newInvoice = await tx.invoice.create({
                     data: {
-                        booking_id: newReservation.id,
-                        user_id: parsed.user_id,
-                        amount: totalPrice,
-                        status: "INITIATED"
+                        club_id: clubId!,
+                        number: invoiceNumber,
+                        total_cents: totalPrice,
+                        status: "ISSUED",
+                        items: {
+                            create: [{
+                                description: `Reserva de pista: ${court.name} (${occ.start.toLocaleDateString()})`,
+                                quantity: 1,
+                                unit_price: totalPrice,
+                                total_price: totalPrice,
+                            }]
+                        }
                     }
                 });
+
+                const isGuestBooking = req.user?.role === "USER";
+                const expiryTime = isGuestBooking ? 2 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+
+                const newReservation = await tx.booking.create({
+                    data: {
+                        club_id: clubId!,
+                        court_id: parsed.court_id,
+                        user_id: parsed.user_id || null,
+                        guest_name: parsed.guest_name || null,
+                        phone: parsed.phone || null,
+                        payment_method: parsed.payment_method || null,
+                        invoice_id: newInvoice.id,
+                        recurring_id: recurringId,
+                        start_at: occ.start,
+                        end_at: occ.end,
+                        total_cents: totalPrice,
+                        price_cents: Math.floor(totalPrice / 4),
+                        strategy: parsed.strategy,
+                        status: "CONFIRMED",
+                        expires_at: new Date(Date.now() + expiryTime)
+                    }
+                });
+
+                // Create Payment Shares
+                if (parsed.strategy === "SPLIT") {
+                    const shareAmount = Math.floor(totalPrice / 4);
+                    const sharesData = [];
+                    sharesData.push({
+                        booking_id: newReservation.id,
+                        user_id: parsed.user_id,
+                        amount: shareAmount,
+                        status: "INITIATED"
+                    });
+                    for (let i = 0; i < 3; i++) {
+                        sharesData.push({
+                            booking_id: newReservation.id,
+                            user_id: null,
+                            amount: shareAmount,
+                            status: "INITIATED"
+                        });
+                    }
+                    await tx.paymentShare.createMany({ data: sharesData });
+                } else {
+                    await tx.paymentShare.create({
+                        data: {
+                            booking_id: newReservation.id,
+                            user_id: parsed.user_id,
+                            amount: totalPrice,
+                            status: "INITIATED"
+                        }
+                    });
+                }
+
+                await tx.club.update({
+                    where: { id: clubId },
+                    data: { invoice_counter: { increment: 1 } }
+                });
+
+                createdBookings.push(newReservation);
             }
 
-            await tx.club.update({
-                where: { id: clubId },
-                data: { invoice_counter: { increment: 1 } }
-            });
-
-            return { reservation: newReservation, invoice: newInvoice };
+            return createdBookings;
         });
 
         res.status(201).json({
-            reservation,
-            invoice,
-            message: parsed.strategy === "SPLIT"
-                ? "Reserva creada. Tienes 2 horas para confirmar los pagos por Bizum."
+            reservations: results,
+            count: results.length,
+            message: parsed.recurring
+                ? `Se han creado ${results.length} reservas recurrentes. Tienes 2 horas para confirmar el pago por Bizum.`
                 : "Reserva creada. Tienes 2 horas para confirmar el pago por Bizum."
         });
+    })
+);
+
+// JOIN RESERVATION (Claim a share)
+reservationsRouter.post(
+    "/:id/join",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const bookingId = req.params.id as string;
+        const userId = req.user?.userId;
+
+        if (!userId) throw new ApiError(401, "UNAUTHORIZED", "Usuario no identificado.");
+
+        // Check if user already has a share in this booking
+        const existingShare = await prisma.paymentShare.findFirst({
+            where: { booking_id: bookingId, user_id: userId }
+        });
+        if (existingShare) {
+            return res.json({ message: "Ya formas parte de esta reserva.", share: existingShare });
+        }
+
+        // Find an unclaimed share
+        const unclaimedShare = await prisma.paymentShare.findFirst({
+            where: { booking_id: bookingId, user_id: null }
+        });
+
+        if (!unclaimedShare) {
+            throw new ApiError(400, "FULL", "Esta reserva ya no tiene plazas disponibles.");
+        }
+
+        const updatedShare = await prisma.paymentShare.update({
+            where: { id: unclaimedShare.id },
+            data: { user_id: userId }
+        });
+
+        res.json({ message: "Te has unido a la reserva con éxito.", share: updatedShare });
     })
 );
 
