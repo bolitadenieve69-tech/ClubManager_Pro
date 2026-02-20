@@ -41,6 +41,21 @@ model Club {
   supplier_invoices      SupplierInvoice[]
   tournaments            Tournament[]
   users                  User[]
+  audit_logs             AuditLog[]
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  club_id     String
+  user_id     String
+  action      String   // e.g., "CREATE_TOURNAMENT", "ARCHIVE_TOURNAMENT", "DELETE_TOURNAMENT"
+  resource    String   // e.g., "Tournament"
+  resource_id String
+  details     String?
+  created_at  DateTime @default(now())
+  club        Club     @relation(fields: [club_id], references: [id])
+
+  @@index([club_id])
 }
 
 model Member {

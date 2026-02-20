@@ -5,6 +5,7 @@ import { authMiddleware, AuthRequest } from "../middleware/auth.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../middleware/error.js";
 import { buildDiploma } from "../utils/pdf/diploma.js";
+import { buildAmericanoTemplate } from "../utils/pdf/americano.js";
 import PDFDocument from "pdfkit";
 
 export const tournamentsRouter = Router();
@@ -108,10 +109,13 @@ tournamentsRouter.post(
     })
 );
 
+import { createAuditLog } from "../utils/audit.js";
+
+// ... (existing imports and schemas)
+
 /**
  * GENERATE ROUNDS
- * Simple rotation algorithm for Americano.
- * For now, simple enough for pairs.
+ * Strict 8-player circular rotation for 8 rounds.
  */
 tournamentsRouter.post(
     "/:id/generate-rounds",
@@ -124,37 +128,146 @@ tournamentsRouter.post(
         });
 
         if (!tournament) throw new ApiError(404, "NOT_FOUND", "Torneo no encontrado");
+        if (tournament.status === "ARCHIVED") throw new ApiError(400, "BAD_REQUEST", "Torneo archivado y no puede modificarse");
 
         const participants = tournament.participants;
         const n = participants.length;
 
-        if (n < 4) throw new ApiError(400, "BAD_REQUEST", "Se necesitan al menos 4 participantes");
+        if (n !== 8) throw new ApiError(400, "BAD_REQUEST", "Para este formato profesional se requieren exactamente 8 participantes");
 
-        const roundsNeeded = Math.floor(tournament.duration_minutes / tournament.match_duration_minutes);
+        // First, clear existing matches for this tournament to avoid duplicates
+        await prisma.tournamentMatch.deleteMany({ where: { tournament_id: id as string } });
+
+        const rounds = 8;
         const matchesCreated = [];
 
-        for (let r = 1; r <= roundsNeeded; r++) {
-            const rotated = [...participants];
-            const shift = (r - 1) % n;
-            for (let s = 0; s < shift; s++) rotated.push(rotated.shift()!);
+        // Method: Player 1 fixed, 2-8 rotate
+        // Indices represent indices in participants array [0..7]
+        const rotatorIndices = [1, 2, 3, 4, 5, 6, 7]; // Participants 2 to 8
 
-            for (let i = 0; i < Math.floor(n / 4); i++) {
-                const base = i * 4;
-                const match = await prisma.tournamentMatch.create({
-                    data: {
-                        tournament_id: id as string,
-                        round: r,
-                        player1_id: rotated[base].id,
-                        player2_id: rotated[base + 1].id,
-                        player3_id: rotated[base + 2].id,
-                        player4_id: rotated[base + 3].id,
-                    }
-                });
-                matchesCreated.push(match);
-            }
+        for (let r = 0; r < rounds; r++) {
+            // Circle construction for this round
+            // Top: [0, r0, r1, r2]
+            // Bottom: [r6, r5, r4, r3]
+            const top = [0, rotatorIndices[0], rotatorIndices[1], rotatorIndices[2]];
+            const bottom = [rotatorIndices[6], rotatorIndices[5], rotatorIndices[4], rotatorIndices[3]];
+
+            // Pairs (cross-circle pairing for variety)
+            // (1,8), (2,7), (3,6), (4,5) - using Berger-style vertical pairs
+            const pair1 = [participants[top[0]], participants[bottom[0]]];
+            const pair2 = [participants[top[1]], participants[bottom[1]]];
+            const pair3 = [participants[top[2]], participants[bottom[2]]];
+            const pair4 = [participants[top[3]], participants[bottom[3]]];
+
+            // Pista 1: Pair 1 vs Pair 2
+            const m1 = await prisma.tournamentMatch.create({
+                data: {
+                    tournament_id: id as string,
+                    round: r + 1,
+                    player1_id: pair1[0].id,
+                    player2_id: pair1[1].id,
+                    player3_id: pair2[0].id,
+                    player4_id: pair2[1].id,
+                }
+            });
+
+            // Pista 2: Pair 3 vs Pair 4
+            const m2 = await prisma.tournamentMatch.create({
+                data: {
+                    tournament_id: id as string,
+                    round: r + 1,
+                    player1_id: pair3[0].id,
+                    player2_id: pair3[1].id,
+                    player3_id: pair4[0].id,
+                    player4_id: pair4[1].id,
+                }
+            });
+
+            matchesCreated.push(m1, m2);
+
+            // Rotate rotatorIndices (Shift right)
+            const last = rotatorIndices.pop()!;
+            rotatorIndices.unshift(last);
         }
 
-        res.json({ message: `${matchesCreated.length} partidos generados en ${roundsNeeded} rondas`, matches: matchesCreated });
+        await createAuditLog(
+            tournament.club_id,
+            req.user!.userId,
+            "GENERATE_ROUNDS",
+            "Tournament",
+            id as string,
+            `Generadas 8 rondas para 8 jugadores.`
+        );
+
+        res.json({ message: `${matchesCreated.length} partidos generados en ${rounds} rondas`, matches: matchesCreated });
+    })
+);
+
+// Archive Tournament
+tournamentsRouter.patch(
+    "/:id/archive",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const { id } = req.params;
+        const userRole = req.user?.role;
+
+        if (userRole !== "ADMIN" && userRole !== "OWNER") {
+            throw new ApiError(403, "FORBIDDEN", "Solo los administradores pueden archivar torneos.");
+        }
+
+        const tournament = await prisma.tournament.findUnique({ where: { id: id as string } });
+        if (!tournament) throw new ApiError(404, "NOT_FOUND", "Torneo no encontrado");
+
+        const updated = await prisma.tournament.update({
+            where: { id: id as string },
+            data: { status: "ARCHIVED" }
+        });
+
+        await createAuditLog(
+            tournament.club_id,
+            req.user!.userId,
+            "ARCHIVE_TOURNAMENT",
+            "Tournament",
+            id as string
+        );
+
+        res.json({ tournament: updated });
+    })
+);
+
+// Delete Tournament
+tournamentsRouter.delete(
+    "/:id",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const { id } = req.params;
+        const userRole = req.user?.role;
+
+        if (userRole !== "ADMIN" && userRole !== "OWNER") {
+            throw new ApiError(403, "FORBIDDEN", "Solo los administradores pueden borrar torneos.");
+        }
+
+        const tournament = await prisma.tournament.findUnique({ where: { id: id as string } });
+        if (!tournament) throw new ApiError(404, "NOT_FOUND", "Torneo no encontrado");
+
+        // Delete matches, participants, and bookings (if any) first or use cascade
+        await prisma.$transaction([
+            prisma.tournamentMatch.deleteMany({ where: { tournament_id: id as string } }),
+            prisma.tournamentParticipant.deleteMany({ where: { tournament_id: id as string } }),
+            prisma.booking.updateMany({ where: { tournament_id: id as string }, data: { tournament_id: null } }),
+            prisma.tournament.delete({ where: { id: id as string } })
+        ]);
+
+        await createAuditLog(
+            tournament.club_id,
+            req.user!.userId,
+            "DELETE_TOURNAMENT",
+            "Tournament",
+            id as string,
+            `Nombre: ${tournament.name}`
+        );
+
+        res.json({ success: true });
     })
 );
 
@@ -193,6 +306,31 @@ tournamentsRouter.get(
             winnerName: winnerName,
             date: tournament.date,
             points: winner.total_points
+        });
+        doc.end();
+    })
+);
+
+// Get Americano Template PDF
+tournamentsRouter.get(
+    "/americano-template",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const clubId = req.user?.clubId;
+        const club = await prisma.club.findUnique({
+            where: { id: clubId }
+        });
+
+        if (!club) throw new ApiError(404, "NOT_FOUND", "Club no encontrado");
+
+        const doc = new (PDFDocument as any)({ size: "A4", margin: 50 });
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename=Americano_8_Jugadores.pdf`);
+
+        doc.pipe(res);
+        await buildAmericanoTemplate(doc, {
+            clubName: club.legal_name || "CLUB MANAGER PRO",
+            logoUrl: club.logo_url || undefined
         });
         doc.end();
     })

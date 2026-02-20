@@ -12,6 +12,9 @@ import {
     Calendar,
     Target,
     Settings,
+    Archive,
+    Trash2,
+    Info,
     Loader2,
     FileText,
     XCircle
@@ -104,6 +107,47 @@ export default function Americano() {
     const [newTorneoName, setNewTorneoName] = useState("");
     const [isAddingJugador, setIsAddingJugador] = useState(false);
     const [newJugadorName, setNewJugadorName] = useState("");
+    const [showArchived, setShowArchived] = useState(false);
+    const [role, setRole] = useState<string>("USER");
+
+    const loadUser = async () => {
+        try {
+            const data = await apiFetch<{ user: { role: string } }>("/auth/me");
+            setRole(data.user.role);
+        } catch (e) { }
+    };
+
+    const handleArchive = async (id: string) => {
+        if (!window.confirm("¿Seguro que quieres archivar este torneo? Pasará al historial y será de solo lectura.")) return;
+        setIsActionLoading(true);
+        try {
+            await apiFetch(`/tournaments/${id}/archive`, { method: "PATCH" });
+            loadList();
+            setSelected(null);
+            setDetail(null);
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("¿ESTÁS SEGURO? Esta acción es definitiva y eliminará todos los resultados y partidos.")) return;
+        setIsActionLoading(true);
+        try {
+            await apiFetch(`/tournaments/${id}`, { method: "DELETE" });
+            loadList();
+            setSelected(null);
+            setDetail(null);
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+
+    useEffect(() => { loadUser(); }, []);
 
     const loadList = async () => {
         setLoading(true);
@@ -305,43 +349,76 @@ export default function Americano() {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* List Sidebar */}
                     <div className="lg:col-span-1 space-y-4">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">Torneos Activos</h3>
-                        {tournaments.map(t => (
+                        <div className="flex items-center justify-between px-2">
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                {showArchived ? "Historial" : "Torneos Activos"}
+                            </h3>
                             <button
-                                key={t.id}
-                                onClick={() => setSelected(t.id)}
-                                className={cn(
-                                    "w-full text-left p-4 rounded-3xl border transition-all relative overflow-hidden group",
-                                    selected === t.id
-                                        ? "bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-100"
-                                        : "bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50"
-                                )}
+                                onClick={() => setShowArchived(!showArchived)}
+                                className="text-[10px] font-black text-indigo-500 uppercase hover:underline"
                             >
-                                <div className="relative z-10 flex flex-col gap-1">
-                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", selected === t.id ? "text-indigo-200" : "text-slate-400")}>
-                                        {new Date(t.date).toLocaleDateString()}
-                                    </span>
-                                    <span className={cn("font-bold truncate", selected === t.id ? "text-white" : "text-slate-900")}>
-                                        {t.name}
-                                    </span>
-                                    <div className="flex items-center justify-between mt-2">
-                                        <span className={cn("flex items-center gap-1.5 text-xs font-bold", selected === t.id ? "text-indigo-100" : "text-indigo-600")}>
-                                            <Users className="w-3 h-3" />
-                                            {t._count.participants} Inscritos
-                                        </span>
-                                        <span className={cn(
-                                            "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest",
-                                            t.status === 'OPEN' ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-400"
-                                        )}>
-                                            {t.status}
-                                        </span>
-                                    </div>
-                                </div>
-                                {selected === t.id && (
-                                    <div className="absolute top-0 right-0 -mr-4 -mt-4 w-16 h-16 bg-white/10 rounded-full blur-xl" />
-                                )}
+                                {showArchived ? "Ver Activos" : "Ver Historial"}
                             </button>
-                        ))}
+                        </div>
+                        {tournaments
+                            .filter(t => showArchived ? t.status === 'ARCHIVED' : t.status !== 'ARCHIVED')
+                            .map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => setSelected(t.id)}
+                                    className={cn(
+                                        "w-full text-left p-4 rounded-3xl border transition-all relative overflow-hidden group",
+                                        selected === t.id
+                                            ? "bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-100"
+                                            : "bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50"
+                                    )}
+                                >
+                                    <div className="relative z-10 flex flex-col gap-1">
+                                        <div className="flex justify-between items-start">
+                                            <span className={cn("text-[10px] font-black uppercase tracking-widest", selected === t.id ? "text-indigo-200" : "text-slate-400")}>
+                                                {new Date(t.date).toLocaleDateString()}
+                                            </span>
+                                            {(role === 'ADMIN' || role === 'OWNER') && !showArchived && (
+                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleArchive(t.id); }}
+                                                        className="p-1 hover:bg-white/20 rounded text-white"
+                                                        title="Archivar"
+                                                    >
+                                                        <Archive className="w-3 h-3" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
+                                                        className="p-1 hover:bg-white/20 rounded text-white"
+                                                        title="Borrar definitivo"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span className={cn("font-bold truncate", selected === t.id ? "text-white" : "text-slate-900")}>
+                                            {t.name}
+                                        </span>
+                                        <div className="flex items-center justify-between mt-2">
+                                            <span className={cn("flex items-center gap-1.5 text-xs font-bold", selected === t.id ? "text-indigo-100" : "text-indigo-600")}>
+                                                <Users className="w-3 h-3" />
+                                                {t._count.participants} Inscritos
+                                            </span>
+                                            <span className={cn(
+                                                "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest",
+                                                t.status === 'OPEN' ? "bg-emerald-500/20 text-emerald-400" :
+                                                    t.status === 'ARCHIVED' ? "bg-slate-500/20 text-slate-400" : "bg-indigo-500/20 text-indigo-400"
+                                            )}>
+                                                {t.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {selected === t.id && (
+                                        <div className="absolute top-0 right-0 -mr-4 -mt-4 w-16 h-16 bg-white/10 rounded-full blur-xl" />
+                                    )}
+                                </button>
+                            ))}
                     </div>
 
                     {/* Main Content Area */}
@@ -524,29 +601,43 @@ export default function Americano() {
                                                     </button>
                                                 </div>
                                             ) : (
+                                                !showArchived && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setIsAddingJugador(true)}
+                                                        disabled={isActionLoading}
+                                                        className="text-indigo-600 text-[10px] font-black uppercase tracking-widest border border-indigo-100 rounded-full"
+                                                        icon={<Plus className="w-3 h-3" />}
+                                                        title="Añadir jugador invitado"
+                                                    >
+                                                        Añadir Jugador
+                                                    </Button>
+                                                )
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <a
+                                                href={((import.meta as any).env.VITE_API_BASE_URL || "") + `/tournaments/americano-template`}
+                                                target="_blank"
+                                                className="text-emerald-600 hover:text-emerald-700 text-xs font-black uppercase tracking-widest flex items-center gap-1.5 border border-emerald-100 px-3 py-1.5 rounded-full bg-emerald-50/50"
+                                                title="Descargar plantilla PDF para imprimir"
+                                            >
+                                                <FileText className="w-3.5 h-3.5" /> Plantilla (PDF)
+                                            </a>
+                                            {!showArchived && (
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => setIsAddingJugador(true)}
-                                                    disabled={isActionLoading}
-                                                    className="text-indigo-600 text-[10px] font-black uppercase tracking-widest border border-indigo-100 rounded-full"
-                                                    icon={<Plus className="w-3 h-3" />}
-                                                    title="Añadir jugador invitado"
+                                                    onClick={handleGenerateRounds}
+                                                    loading={isActionLoading}
+                                                    className="text-indigo-600 hover:text-indigo-700 text-xs font-black uppercase tracking-widest flex items-center gap-1.5"
+                                                    title="Generar Rondas de partidos"
                                                 >
-                                                    Añadir Jugador
+                                                    <Play className="w-3.5 h-3.5" /> Generar Rondas
                                                 </Button>
                                             )}
                                         </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={handleGenerateRounds}
-                                            loading={isActionLoading}
-                                            className="text-indigo-600 hover:text-indigo-700 text-xs font-black uppercase tracking-widest flex items-center gap-1.5"
-                                            title="Generar Rondas de partidos"
-                                        >
-                                            <Play className="w-3.5 h-3.5" /> Generar Rondas
-                                        </Button>
                                     </div>
 
                                     {/* Matches grouped by round */}
@@ -645,8 +736,22 @@ export default function Americano() {
                                             );
                                         });
                                     })()}
+                                    {/* Scoring Info */}
+                                    <div className="bg-indigo-50 border border-indigo-100 rounded-[2rem] p-6 flex gap-4">
+                                        <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                                            <Info className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <h4 className="font-bold text-indigo-900">Sistema de Puntuación Profesional</h4>
+                                            <p className="text-sm text-indigo-700 leading-relaxed">
+                                                La clasificación es <strong>individual</strong>. En cada partido, los puntos obtenidos (juegos ganados) se suman a tu ranking personal.
+                                                El sistema utiliza una rotación circular de 8 rondas para maximizar la variedad de compañeros y rivales.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+
                         )}
                     </div>
                 </div>
