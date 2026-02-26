@@ -7,6 +7,7 @@ import { ApiError } from "../middleware/error.js";
 import { buildDiploma } from "../utils/pdf/diploma.js";
 import { buildAmericanoTemplate } from "../utils/pdf/americano.js";
 import PDFDocument from "pdfkit";
+import { createAuditLog } from "../utils/audit.js";
 
 export const tournamentsRouter = Router();
 
@@ -109,7 +110,7 @@ tournamentsRouter.post(
     })
 );
 
-import { createAuditLog } from "../utils/audit.js";
+
 
 /**
  * GENERATE ROUNDS
