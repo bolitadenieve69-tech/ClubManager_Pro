@@ -17,3 +17,4 @@ dist-ssr
 # Environment variables
 .env
 .env.production
+.vercel

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { reportsApi, ReportType } from "../lib/reports";
+import { apiFetch } from "../lib/api";
 import {
     FileText,
     FileSpreadsheet,
@@ -34,8 +35,8 @@ const Reportes: React.FC = () => {
     const [reportType, setReportType] = useState<ReportType>("summary");
     const [expiresIn, setExpiresIn] = useState<number | null>(null);
 
-    const cleanupTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const cleanupTimerRef = useRef<number | null>(null);
+    const countdownIntervalRef = useRef<number | null>(null);
 
     useEffect(() => {
         return () => {
@@ -90,10 +91,10 @@ const Reportes: React.FC = () => {
             } else {
                 setPdfUrl(urlBlob);
                 setExpiresIn(60);
-                countdownIntervalRef.current = setInterval(() => {
+                countdownIntervalRef.current = window.setInterval(() => {
                     setExpiresIn(prev => (prev && prev > 0 ? prev - 1 : 0));
                 }, 1000);
-                cleanupTimerRef.current = setTimeout(() => {
+                cleanupTimerRef.current = window.setTimeout(() => {
                     URL.revokeObjectURL(urlBlob);
                     setPdfUrl(null);
                     setExpiresIn(null);

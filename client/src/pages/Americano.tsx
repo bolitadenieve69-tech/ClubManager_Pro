@@ -32,7 +32,7 @@ type Tournament = {
     id: string;
     name: string;
     date: string;
-    status: 'OPEN' | 'ONGOING' | 'COMPLETED';
+    status: 'OPEN' | 'ONGOING' | 'COMPLETED' | 'ARCHIVED';
     points_per_match: number;
     duration_minutes: number;
     match_duration_minutes: number;
@@ -378,15 +378,17 @@ export default function Americano() {
                                             <span className={cn("text-[10px] font-black uppercase tracking-widest", selected === t.id ? "text-indigo-200" : "text-slate-400")}>
                                                 {new Date(t.date).toLocaleDateString()}
                                             </span>
-                                            {(role === 'ADMIN' || role === 'OWNER') && !showArchived && (
+                                            {(role === 'ADMIN' || role === 'OWNER') && (
                                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleArchive(t.id); }}
-                                                        className="p-1 hover:bg-white/20 rounded text-white"
-                                                        title="Archivar"
-                                                    >
-                                                        <Archive className="w-3 h-3" />
-                                                    </button>
+                                                    {!showArchived && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleArchive(t.id); }}
+                                                            className="p-1 hover:bg-white/20 rounded text-white"
+                                                            title="Archivar"
+                                                        >
+                                                            <Archive className="w-3 h-3" />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
                                                         className="p-1 hover:bg-white/20 rounded text-white"
