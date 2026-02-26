@@ -111,8 +111,6 @@ tournamentsRouter.post(
 
 import { createAuditLog } from "../utils/audit.js";
 
-// ... (existing imports and schemas)
-
 /**
  * GENERATE ROUNDS
  * Strict 8-player circular rotation for 8 rounds.

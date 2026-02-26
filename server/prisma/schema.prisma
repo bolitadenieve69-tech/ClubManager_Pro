@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Club {
@@ -211,6 +212,7 @@ model TournamentParticipant {
   tournament    Tournament @relation(fields: [tournament_id], references: [id])
 
   @@unique([tournament_id, user_id])
+  @@index([tournament_id])
 }
 
 model TournamentMatch {
@@ -225,6 +227,8 @@ model TournamentMatch {
   score_12      Int?
   score_34      Int?
   tournament    Tournament @relation(fields: [tournament_id], references: [id])
+
+  @@index([tournament_id])
 }
 
 model User {
