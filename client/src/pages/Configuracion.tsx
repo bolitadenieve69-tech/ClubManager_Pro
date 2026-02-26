@@ -32,7 +32,7 @@ export default function Configuracion() {
                     tax_id: data.tax_id || '',
                     fiscal_address: data.fiscal_address || '',
                     phone_whatsapp: data.phone_whatsapp || '',
-                    bizum_payee: data.biz_payee || '',
+                    bizum_payee: data.bizum_payee || '',
                 });
             } catch (err) {
                 console.error("Error fetching club data:", err);

@@ -194,7 +194,13 @@ export default function Dashboard() {
                                         />
                                     </div>
                                 </div>
-                                <Button variant="glass" className="w-full mt-4">VER DETALLES</Button>
+                                <Button
+                                    variant="glass"
+                                    className="w-full mt-4"
+                                    onClick={() => window.location.href = '/kpis'}
+                                >
+                                    VER DETALLES
+                                </Button>
                             </div>
                         </Card>
                         <MembersManagement />
