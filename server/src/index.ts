@@ -9,8 +9,9 @@ const app = express();
 const PORT = parseInt(env.PORT);
 
 // Standard Middlewares
+const corsOrigin = env.CORS_ORIGIN === '*' ? '*' : env.CORS_ORIGIN.split(',').map(s => s.trim());
 app.use(cors({
-    origin: env.CORS_ORIGIN,
+    origin: corsOrigin,
     credentials: true,
 }));
 app.use(express.json());

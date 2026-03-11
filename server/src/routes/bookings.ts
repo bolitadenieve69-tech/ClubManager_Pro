@@ -52,7 +52,7 @@ bookingsRouter.post(
                     strategy: parsed.paymentStrategy,
                     price_cents: pricePerPlayer,
                     total_cents: totalPrice,
-                    expires_at: expiresAt
+                    hold_expires_at: expiresAt
                 }
             });
 

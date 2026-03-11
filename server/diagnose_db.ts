@@ -7,7 +7,13 @@ import { fileURLToPath } from 'url';
 // Load environment variables from .env file
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+    datasources: {
+        db: {
+            url: process.env.DIRECT_URL
+        }
+    }
+});
 
 async function main() {
     console.log('--- Database Diagnostic Tool ---');

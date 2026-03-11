@@ -113,7 +113,6 @@ reservationsRouter.post(
                 hold_expires_at: new Date(Date.now() + holdMinutes * 60000),
                 total_cents: totalCents,
                 price_cents: Math.floor(totalCents / courtIds.length), // Placeholder
-                expires_at: new Date(Date.now() + 24 * 3600000) // General expiry
             }
         });
 
@@ -222,10 +221,16 @@ const reservationSchema = z.object({
     start_at: z.string().datetime().optional(),
     end_at: z.string().datetime().optional(),
     strategy: z.enum(["SINGLE", "SPLIT"]).default("SINGLE"),
+    skipConflicts: z.boolean().optional().default(false),
     recurring: z.object({
         frequency: z.enum(['weekly']),
         interval: z.number().default(1),
-        weeks: z.number().min(1).max(12)
+        weekdays: z.array(z.number().min(0).max(6)).optional(),
+        endCondition: z.enum(['date', 'count']).optional().default('count'),
+        endDate: z.string().optional(),
+        maxOccurrences: z.number().min(1).max(52).optional(),
+        // Legacy field — backwards compatible
+        weeks: z.number().min(1).max(12).optional()
     }).optional()
 }).refine(data => {
     const startStr = data.start_time || data.start_at;
@@ -393,18 +398,21 @@ reservationsRouter.post(
         // Recurring logic
         let occurrences = [{ start, end }];
         if (parsed.recurring) {
+            const recurringData = parsed.recurring;
             const rules: RecurringRule = {
-                frequency: parsed.recurring.frequency,
-                interval: parsed.recurring.interval,
-                weekdays: [start.getDay()],
-                endCondition: 'count',
-                maxOccurrences: parsed.recurring.weeks
+                frequency: recurringData.frequency,
+                interval: recurringData.interval,
+                weekdays: recurringData.weekdays || [start.getDay()],
+                endCondition: recurringData.endCondition || 'count',
+                maxOccurrences: recurringData.maxOccurrences || recurringData.weeks || 1,
+                endDate: recurringData.endDate ? new Date(recurringData.endDate) : undefined
             };
             const generated = generateOccurrences(start, end, rules);
-            occurrences = generated.map(o => ({ start: o.start, end: o.end }));
+            occurrences = generated.filter(o => o.isValid !== false).map(o => ({ start: o.start, end: o.end }));
         }
 
         const recurringId = parsed.recurring ? randomUUID() : null;
+        const shouldSkipConflicts = parsed.skipConflicts || false;
 
         // 4. Transaction: Create everything for each occurrence
         const results = await prisma.$transaction(async (tx) => {
@@ -426,6 +434,7 @@ reservationsRouter.post(
                 });
 
                 if (overlapping) {
+                    if (shouldSkipConflicts) continue; // Skip this occurrence silently
                     throw new ApiError(409, "CONFLICT", `La pista ya está reservada el día ${occ.start.toLocaleDateString()} en este tramo horario.`);
                 }
 
@@ -473,7 +482,7 @@ reservationsRouter.post(
                         price_cents: Math.floor(totalPrice / 4),
                         strategy: parsed.strategy,
                         status: "CONFIRMED",
-                        expires_at: new Date(Date.now() + expiryTime)
+                        hold_expires_at: new Date(Date.now() + expiryTime)
                     }
                 });
 
