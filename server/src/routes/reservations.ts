@@ -87,32 +87,76 @@ reservationsRouter.post(
     asyncHandler(async (req: AuthRequest, res) => {
         const clubId = req.user?.clubId;
         const userId = req.user?.userId;
-        const { courtIds, startAt, endAt, totalCents } = z.object({
+        const { courtIds, startAt, endAt } = z.object({
             courtIds: z.array(z.string()),
             startAt: z.string().datetime(),
             endAt: z.string().datetime(),
-            totalCents: z.number()
         }).parse(req.body);
+
+        const start = new Date(startAt);
+        const end = new Date(endAt);
+
+        // Fix 1: Re-verify availability to prevent race conditions
+        const conflict = await prisma.booking.findFirst({
+            where: {
+                club_id: clubId!,
+                status: { in: ["CONFIRMED", "HOLD"] },
+                start_at: { lt: end },
+                end_at: { gt: start },
+                OR: [
+                    { hold_expires_at: null },
+                    { hold_expires_at: { gt: new Date() } }
+                ],
+                AND: [
+                    {
+                        OR: [
+                            { court_id: { in: courtIds } },
+                            { court_ids: { hasSome: courtIds } }
+                        ]
+                    }
+                ]
+            }
+        });
+
+        if (conflict) throw new ApiError(409, "CONFLICT", "La pista ya no está disponible. Por favor, selecciona otra hora.");
 
         const club = await prisma.club.findUnique({ where: { id: clubId! } });
         const holdMinutes = club?.hold_minutes || 10;
 
+        // Fix 2: Calculate price server-side using club pricing configuration
+        const prices = await prisma.price.findMany({
+            where: {
+                club_id: clubId!,
+                OR: [
+                    { court_id: null },
+                    { court_id: { in: courtIds } }
+                ]
+            }
+        });
+
+        let totalCents = 0;
+        try {
+            const result = calculateReservationPrice(start, end, prices);
+            totalCents = result.totalCents * courtIds.length;
+        } catch {
+            // No price config found — set to 0, admin can adjust later
+        }
+
         const booking = await prisma.booking.create({
             data: {
                 club_id: clubId!,
-                court_id: courtIds[0], // Primary for compatibility
+                court_id: courtIds[0],
                 court_ids: courtIds,
                 user_id: userId!,
-                start_at: new Date(startAt),
-                end_at: new Date(endAt),
+                start_at: start,
+                end_at: end,
                 status: "HOLD",
                 source: "PWA",
-                amount_total: totalCents,
                 amount_paid: 0,
                 payment_status: "PENDIENTE",
                 hold_expires_at: new Date(Date.now() + holdMinutes * 60000),
                 total_cents: totalCents,
-                price_cents: Math.floor(totalCents / courtIds.length), // Placeholder
+                price_cents: Math.floor(totalCents / courtIds.length),
             }
         });
 
@@ -191,7 +235,7 @@ reservationsRouter.post(
 
                 if (booking) {
                     const newAmountPaid = (booking.amount_paid || 0) + amountCents;
-                    const isTotal = newAmountPaid >= (booking.amount_total || 0);
+                    const isTotal = newAmountPaid >= (booking.total_cents || 0);
 
                     await tx.booking.update({
                         where: { id: booking.id },
@@ -414,115 +458,142 @@ reservationsRouter.post(
         const recurringId = parsed.recurring ? randomUUID() : null;
         const shouldSkipConflicts = parsed.skipConflicts || false;
 
-        // 4. Transaction: Create everything for each occurrence
+        // 4. Transaction: Create everything for each occurrence efficiently
         const results = await prisma.$transaction(async (tx) => {
-            const createdBookings = [];
-
-            for (const occ of occurrences) {
-                // Validate overlaps for each
-                const overlapping = await tx.booking.findFirst({
-                    where: {
-                        court_id: parsed.court_id,
-                        status: "CONFIRMED",
-                        OR: [
-                            {
-                                start_at: { lt: occ.end },
-                                end_at: { gt: occ.start },
-                            },
-                        ],
-                    },
-                });
-
-                if (overlapping) {
-                    if (shouldSkipConflicts) continue; // Skip this occurrence silently
-                    throw new ApiError(409, "CONFLICT", `La pista ya está reservada el día ${occ.start.toLocaleDateString()} en este tramo horario.`);
+            // Check overlaps for ALL occurrences at once
+            const overlapping = await tx.booking.findMany({
+                where: {
+                    court_id: parsed.court_id,
+                    status: "CONFIRMED",
+                    OR: occurrences.map(occ => ({
+                        start_at: { lt: occ.end },
+                        end_at: { gt: occ.start },
+                    }))
                 }
+            });
 
-                const txClub = await tx.club.findUnique({
-                    where: { id: clubId },
-                    select: { invoice_counter: true }
+            if (overlapping.length > 0) {
+                if (!shouldSkipConflicts) {
+                    const firstMatch = overlapping[0];
+                    throw new ApiError(409, "CONFLICT", `La pista ya está reservada el día ${firstMatch.start_at.toLocaleDateString()} en este tramo horario.`);
+                }
+            }
+
+            // Filter out occurrences that have overlaps if skipConflicts is true
+            const validOccurrences = occurrences.filter(occ => {
+                const hasOverlap = overlapping.some(b => b.start_at < occ.end && b.end_at > occ.start);
+                return !hasOverlap;
+            });
+
+            if (validOccurrences.length === 0) return [];
+
+            // Update Club invoice counter ONCE
+            const txClub = await tx.club.update({
+                where: { id: clubId },
+                data: { invoice_counter: { increment: validOccurrences.length } },
+                select: { invoice_counter: true }
+            });
+
+            const startInvoiceNumber = txClub.invoice_counter - validOccurrences.length;
+            const isGuestBooking = req.user?.role === "USER";
+            const expiryTime = isGuestBooking ? 2 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+            const now = new Date();
+
+            const invoiceData = [];
+            const bookingData = [];
+            const sharesData: any[] = [];
+            const createdBookings: any[] = [];
+
+            for (let i = 0; i < validOccurrences.length; i++) {
+                const occ = validOccurrences[i];
+                const invoiceId = randomUUID();
+                const bookingId = randomUUID();
+                const invoiceNumber = startInvoiceNumber + i;
+
+                invoiceData.push({
+                    id: invoiceId,
+                    club_id: clubId!,
+                    number: invoiceNumber,
+                    total_cents: totalPrice,
+                    status: "ISSUED",
+                    created_at: now
                 });
-                if (!txClub) throw new ApiError(404, "NOT_FOUND", "Club no encontrado.");
 
-                const invoiceNumber = txClub.invoice_counter;
+                // Note: Invoice items still need to be created. 
+                // Since they are relations, we should either use create or multiple createMany.
+                // For simplicity and correctness with InvoiceItem, let's keep it in mind.
 
-                const newInvoice = await tx.invoice.create({
-                    data: {
-                        club_id: clubId!,
-                        number: invoiceNumber,
-                        total_cents: totalPrice,
-                        status: "ISSUED",
-                        items: {
-                            create: [{
-                                description: `Reserva de pista: ${court.name} (${occ.start.toLocaleDateString()})`,
-                                quantity: 1,
-                                unit_price: totalPrice,
-                                total_price: totalPrice,
-                            }]
-                        }
-                    }
+                bookingData.push({
+                    id: bookingId,
+                    club_id: clubId!,
+                    court_id: parsed.court_id,
+                    user_id: parsed.user_id || null,
+                    guest_name: parsed.guest_name || null,
+                    phone: parsed.phone || null,
+                    payment_method: parsed.payment_method || null,
+                    invoice_id: invoiceId,
+                    recurring_id: recurringId,
+                    start_at: occ.start,
+                    end_at: occ.end,
+                    total_cents: totalPrice,
+                    price_cents: Math.floor(totalPrice / 4),
+                    strategy: parsed.strategy,
+                    status: "CONFIRMED",
+                    hold_expires_at: new Date(Date.now() + expiryTime),
+                    created_at: now
                 });
 
-                const isGuestBooking = req.user?.role === "USER";
-                const expiryTime = isGuestBooking ? 2 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-
-                const newReservation = await tx.booking.create({
-                    data: {
-                        club_id: clubId!,
-                        court_id: parsed.court_id,
-                        user_id: parsed.user_id || null,
-                        guest_name: parsed.guest_name || null,
-                        phone: parsed.phone || null,
-                        payment_method: parsed.payment_method || null,
-                        invoice_id: newInvoice.id,
-                        recurring_id: recurringId,
-                        start_at: occ.start,
-                        end_at: occ.end,
-                        total_cents: totalPrice,
-                        price_cents: Math.floor(totalPrice / 4),
-                        strategy: parsed.strategy,
-                        status: "CONFIRMED",
-                        hold_expires_at: new Date(Date.now() + expiryTime)
-                    }
-                });
-
-                // Create Payment Shares
                 if (parsed.strategy === "SPLIT") {
                     const shareAmount = Math.floor(totalPrice / 4);
-                    const sharesData = [];
                     sharesData.push({
-                        booking_id: newReservation.id,
+                        id: randomUUID(),
+                        booking_id: bookingId,
                         user_id: parsed.user_id,
                         amount: shareAmount,
-                        status: "INITIATED"
+                        status: "INITIATED",
+                        created_at: now
                     });
-                    for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
                         sharesData.push({
-                            booking_id: newReservation.id,
+                            id: randomUUID(),
+                            booking_id: bookingId,
                             user_id: null,
                             amount: shareAmount,
-                            status: "INITIATED"
+                            status: "INITIATED",
+                            created_at: now
                         });
                     }
-                    await tx.paymentShare.createMany({ data: sharesData });
                 } else {
-                    await tx.paymentShare.create({
-                        data: {
-                            booking_id: newReservation.id,
-                            user_id: parsed.user_id,
-                            amount: totalPrice,
-                            status: "INITIATED"
-                        }
+                    sharesData.push({
+                        id: randomUUID(),
+                        booking_id: bookingId,
+                        user_id: parsed.user_id,
+                        amount: totalPrice,
+                        status: "INITIATED",
+                        created_at: now
                     });
                 }
 
-                await tx.club.update({
-                    where: { id: clubId },
-                    data: { invoice_counter: { increment: 1 } }
-                });
-
-                createdBookings.push(newReservation);
+                createdBookings.push({ id: bookingId, start_at: occ.start });
             }
+
+            // BATCH INSERTS
+            await tx.invoice.createMany({ data: invoiceData });
+            
+            // Create Invoice Items in batch
+            const invoiceItemsData = invoiceData.map(inv => ({
+                id: randomUUID(),
+                invoice_id: inv.id,
+                description: `Reserva de pista: ${court.name}`,
+                quantity: 1,
+                unit_price: totalPrice,
+                total_price: totalPrice,
+                created_at: now
+            }));
+            await tx.invoiceItem.createMany({ data: invoiceItemsData });
+
+            await tx.booking.createMany({ data: bookingData });
+            await tx.paymentShare.createMany({ data: sharesData });
 
             return createdBookings;
         });

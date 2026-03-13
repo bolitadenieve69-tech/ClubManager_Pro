@@ -24,6 +24,7 @@ export default function InvitationModal({ isOpen, onClose, onSuccess, member }: 
     const [loading, setLoading] = useState(false);
     const [successData, setSuccessData] = useState<any>(null);
     const [message, setMessage] = useState('');
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         if (member) {
@@ -187,11 +188,14 @@ export default function InvitationModal({ isOpen, onClose, onSuccess, member }: 
                                         onClick={() => {
                                             const publicUrl = (import.meta as any).env.VITE_PUBLIC_URL || window.location.origin;
                                             navigator.clipboard.writeText(`${publicUrl}/join/${successData.token}`);
-                                            alert("Copiado al portapapeles");
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2000);
                                         }}
-                                        className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-primary-600 transition-colors flex items-center justify-center gap-2"
+                                        className="w-full py-4 text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
                                     >
-                                        <span className="border-b border-slate-200 hover:border-primary-500 pb-0.5">O copiar enlace manual</span>
+                                        <span className={copied ? "text-emerald-600 border-b border-emerald-400 pb-0.5" : "text-slate-400 border-b border-slate-200 hover:border-primary-500 pb-0.5"}>
+                                            {copied ? '✓ Copiado' : 'O copiar enlace manual'}
+                                        </span>
                                     </button>
 
                                     <Button

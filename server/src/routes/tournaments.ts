@@ -137,7 +137,7 @@ tournamentsRouter.post(
         // First, clear existing matches for this tournament to avoid duplicates
         await prisma.tournamentMatch.deleteMany({ where: { tournament_id: id as string } });
 
-        const rounds = 8;
+        const rounds = 7;
         const matchesCreated = [];
 
         // Method: Player 1 fixed, 2-8 rotate
@@ -195,10 +195,10 @@ tournamentsRouter.post(
             "GENERATE_ROUNDS",
             "Tournament",
             id as string,
-            `Generadas 8 rondas para 8 jugadores.`
+            `Generadas 7 rondas para 8 jugadores.`
         );
 
-        res.json({ message: `${matchesCreated.length} partidos generados en ${rounds} rondas`, matches: matchesCreated });
+        res.json({ message: `${matchesCreated.length} partidos generados en ${rounds} rondas (Americano)`, matches: matchesCreated });
     })
 );
 

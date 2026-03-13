@@ -19,6 +19,8 @@ export default function MobileBook() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [fetchingSlots, setFetchingSlots] = useState(false);
+    const [slotsError, setSlotsError] = useState<string | null>(null);
+    const [holdExpiredNotice, setHoldExpiredNotice] = useState(false);
 
     // Selection state
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -36,23 +38,26 @@ export default function MobileBook() {
     const [paymentType, setPaymentType] = useState<'TOTAL' | 'PARTIAL'>('TOTAL');
     const [partialAmount, setPartialAmount] = useState<number>(10); // in Euros
 
-    // Pricing (Calculated locally for immediate feedback, then verified by server)
-    const pricePer90Min = 20; // Example
-    const totalPrice = useMemo(() => {
+    // Price: server-confirmed after HOLD is created, estimated locally before
+    const pricePer90Min = 20;
+    const estimatedPrice = useMemo(() => {
         const base = (duration / 90) * pricePer90Min;
         return base * courtCount;
     }, [duration, courtCount]);
+    const totalPrice = holdBooking ? holdBooking.total_cents / 100 : estimatedPrice;
 
     // Load availability when date, duration or courtCount changes
     useEffect(() => {
         const loadAvailability = async () => {
             setFetchingSlots(true);
+            setSlotsError(null);
             try {
                 const data = await apiFetch<any>(`/reservations/availability?date=${date}&duration=${duration}&courtCount=${courtCount}`);
                 setSlots(data.slots || []);
                 setSelectedSlot(null);
-            } catch (err) {
-                console.error("Error loading availability", err);
+            } catch (err: any) {
+                setSlotsError(err.message || "Error al cargar disponibilidad. Inténtalo de nuevo.");
+                setSlots([]);
             } finally {
                 setFetchingSlots(false);
             }
@@ -69,8 +74,10 @@ export default function MobileBook() {
             setSecondsLeft(diff > 0 ? diff : 0);
             if (diff <= 0) {
                 setHoldBooking(null);
+                setSelectedSlot(null);
+                setHoldExpiredNotice(true);
                 setStep(3);
-                alert("La reserva ha expirado. Por favor, selecciona una nueva hora.");
+                setTimeout(() => setHoldExpiredNotice(false), 4000);
             }
         }, 1000);
         return () => clearInterval(interval);
@@ -89,7 +96,6 @@ export default function MobileBook() {
                     courtIds: selectedSlot.courts,
                     startAt: startAt.toISOString(),
                     endAt: endAt.toISOString(),
-                    totalCents: Math.round(totalPrice * 100)
                 })
             });
             setHoldBooking(res.booking);
@@ -121,8 +127,6 @@ export default function MobileBook() {
                     })
                 });
                 // In a real app, we redirect to res.redirectUrl
-                // For simulation, we show success and redirect to detail
-                alert(`Redirigiendo a Bizum (${amountToPay}€)...`);
                 navigate(`/m/booking/${holdBooking.id}`);
             }
         } catch (err: any) {
@@ -135,6 +139,21 @@ export default function MobileBook() {
     return (
         <MobileLayout title="Nueva Reserva">
             <div className="space-y-8 pb-12 px-2">
+                {/* Hold expired notice */}
+                <AnimatePresence>
+                    {holdExpiredNotice && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4"
+                        >
+                            <Timer className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                            <p className="text-xs font-bold text-amber-700">El tiempo de reserva ha expirado. Selecciona una nueva hora.</p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* Progress Tracker */}
                 <div className="flex items-center justify-between px-8 relative">
                     <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-100 -translate-y-1/2 -z-10" />
@@ -272,6 +291,13 @@ export default function MobileBook() {
                                     <div className="col-span-3 py-20 flex flex-col items-center gap-4">
                                         <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Buscando huecos...</p>
+                                    </div>
+                                ) : slotsError ? (
+                                    <div className="col-span-3 py-16 text-center space-y-4 bg-red-50 rounded-[2.5rem] border-2 border-dashed border-red-100">
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                                            <AlertCircle className="w-6 h-6 text-red-400" />
+                                        </div>
+                                        <p className="text-sm font-bold text-red-400 italic">{slotsError}</p>
                                     </div>
                                 ) : slots.length === 0 ? (
                                     <div className="col-span-3 py-16 text-center space-y-4 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
