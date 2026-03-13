@@ -11,6 +11,7 @@ import { apiFetch } from '../lib/api';
 export default function MobileHome() {
     const navigate = useNavigate();
     const [stats, setStats] = useState({ reservations: 0, matches: 0 });
+    const [recentActivity, setRecentActivity] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -22,6 +23,9 @@ export default function MobileHome() {
                     reservations: data.activeReservations || 0,
                     matches: data.playedMatches || 0
                 });
+
+                const activityData = await apiFetch<any[]>('/users/me/activity');
+                setRecentActivity(activityData.slice(0, 3));
             } catch (err) {
                 console.error("Error fetching stats:", err);
             } finally {
@@ -113,22 +117,54 @@ export default function MobileHome() {
                             <Zap className="w-4 h-4 text-primary-500" />
                             <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.25em]">Actividad</h3>
                         </div>
-                        <Button variant="ghost" size="sm" className="text-primary-600 p-0 text-[10px] font-black tracking-widest hover:bg-transparent">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary-600 p-0 text-[10px] font-black tracking-widest hover:bg-transparent"
+                            onClick={() => navigate('/m/history')}
+                        >
                             VER TODO
                         </Button>
                     </div>
 
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="p-10 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[3rem] text-center"
-                    >
-                        <div className="p-5 bg-white rounded-3xl w-fit mx-auto mb-6 shadow-sm">
-                            <History className="w-10 h-10 text-slate-200" />
+                    {recentActivity.length === 0 ? (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="p-10 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[3rem] text-center"
+                        >
+                            <div className="p-5 bg-white rounded-3xl w-fit mx-auto mb-6 shadow-sm">
+                                <History className="w-10 h-10 text-slate-200" />
+                            </div>
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Sin actividad reciente</p>
+                            <p className="text-[10px] font-bold text-slate-300 mt-2 italic">Tus próximas victorias aparecerán aquí.</p>
+                        </motion.div>
+                    ) : (
+                        <div className="space-y-4">
+                            {recentActivity.map((item) => (
+                                <motion.div
+                                    key={item.id}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => navigate(`/m/booking/${item.id}`)}
+                                    className="p-5 bg-white border border-slate-100 rounded-3xl flex items-center justify-between cursor-pointer"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-xl flex items-center justify-center",
+                                            item.status === 'CONFIRMED' ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"
+                                        )}>
+                                            <Calendar className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-900 uppercase">{item.court?.name}</p>
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase">{format(new Date(item.start_at), 'dd MMM, HH:mm')}</p>
+                                        </div>
+                                    </div>
+                                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                                </motion.div>
+                            ))}
                         </div>
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Sin actividad reciente</p>
-                        <p className="text-[10px] font-bold text-slate-300 mt-2 italic">Tus próximas victorias aparecerán aquí.</p>
-                    </motion.div>
+                    )}
                 </div>
 
                 {/* Visual Accent */}

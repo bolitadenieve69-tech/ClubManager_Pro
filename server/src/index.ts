@@ -4,6 +4,7 @@ import { env } from './utils/env.js';
 import { errorHandler } from './middleware/error.js';
 import { prisma } from './db/prisma.js';
 import { startExpirationJob } from './utils/jobs.js';
+import { authMiddleware, adminOnly } from './middleware/auth.js';
 
 const app = express();
 const PORT = parseInt(env.PORT);
@@ -36,7 +37,7 @@ app.get('/health/db', async (req, res) => {
     }
 });
 
-app.get('/debug/stats', async (req, res) => {
+app.get('/debug/stats', authMiddleware as any, adminOnly as any, async (req, res) => {
     try {
         const stats = {
             clubs: await prisma.club.count(),
@@ -78,6 +79,7 @@ import { occupancyRouter } from "./routes/occupancy.js";
 import { bookingsRouter } from "./routes/bookings.js";
 import supplierInvoicesRouter from "./routes/supplierInvoices.js";
 import { accountingRouter } from "./routes/accounting.js";
+import { usersRouter } from "./routes/users.js";
 
 app.use("/auth", authRoutes);
 app.use("/club", clubRoutes);
@@ -98,6 +100,7 @@ app.use("/occupancy", occupancyRouter);
 app.use("/bookings", bookingsRouter);
 app.use("/supplier-invoices", supplierInvoicesRouter);
 app.use("/accounting", accountingRouter);
+app.use("/users", usersRouter);
 // app.use("/club", clubRoutes);
 
 // Error Handling

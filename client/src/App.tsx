@@ -20,6 +20,7 @@ import MobileAcceptInvite from './pages/MobileAcceptInvite';
 import MobileHome from './pages/MobileHome';
 import MobileBook from './pages/MobileBook';
 import MobileBookingDetail from './pages/MobileBookingDetail';
+import MobileHistory from './pages/MobileHistory';
 import Members from './pages/Members';
 import Configuracion from './pages/Configuracion';
 
@@ -191,6 +192,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <MobileBookingDetail />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/m/history"
+                    element={
+                        <ProtectedRoute>
+                            <MobileHistory />
                         </ProtectedRoute>
                     }
                 />
