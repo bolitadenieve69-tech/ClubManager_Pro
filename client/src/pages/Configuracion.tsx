@@ -1,15 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import { apiFetch } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Building2, Save, Upload, Image as ImageIcon, Globe, Phone, CreditCard, Loader2 } from 'lucide-react';
+import { Building2, Save, Upload, Image as ImageIcon, Phone, CreditCard, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Configuracion() {
     const [club, setClub] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState<'idle' | 'ok' | 'error'>('idle');
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [formData, setFormData] = useState({
         display_name: '',
         logo_url: '',
@@ -42,6 +46,28 @@ export default function Configuracion() {
         };
         fetchClub();
     }, []);
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading(true);
+        setUploadStatus('idle');
+        try {
+            const ext = file.name.split('.').pop();
+            const path = `logos/${club.id}.${ext}`;
+            const { error } = await supabase.storage
+                .from('club-logos')
+                .upload(path, file, { upsert: true, contentType: file.type });
+            if (error) throw error;
+            const { data } = supabase.storage.from('club-logos').getPublicUrl(path);
+            setFormData(f => ({ ...f, logo_url: data.publicUrl }));
+            setUploadStatus('ok');
+        } catch {
+            setUploadStatus('error');
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -107,24 +133,41 @@ export default function Configuracion() {
                                     />
                                 </label>
 
-                                <label className="block space-y-2">
-                                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">URL del Logotipo</span>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            className="w-full bg-slate-50 border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all pr-12"
-                                            placeholder="https://tu-imagen.jpg"
-                                            value={formData.logo_url}
-                                            onChange={e => setFormData({ ...formData, logo_url: e.target.value })}
-                                        />
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                            <Globe className="w-4 h-4 text-slate-300" />
-                                        </div>
-                                    </div>
-                                </label>
-                                <p className="text-[10px] text-slate-400 italic">
-                                    Sube tu logo a una plataforma como Imgur o Cloudinary y pega aquí el enlace directo.
-                                </p>
+                                <div className="space-y-3">
+                                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">Logotipo del Club</span>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        aria-label="Subir logotipo del club"
+                                        title="Subir logotipo del club"
+                                        className="hidden"
+                                        onChange={handleLogoUpload}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                        className="w-full flex items-center justify-center gap-2 bg-primary-50 hover:bg-primary-100 border-2 border-dashed border-primary-200 hover:border-primary-400 rounded-xl px-4 py-4 text-sm font-bold text-primary-600 transition-all disabled:opacity-50"
+                                    >
+                                        {uploading ? (
+                                            <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
+                                        ) : (
+                                            <><Upload className="w-4 h-4" /> Seleccionar archivo</>
+                                        )}
+                                    </button>
+                                    {uploadStatus === 'ok' && (
+                                        <p className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                                            <CheckCircle2 className="w-4 h-4" /> Logo subido correctamente
+                                        </p>
+                                    )}
+                                    {uploadStatus === 'error' && (
+                                        <p className="flex items-center gap-1 text-xs text-rose-600 font-medium">
+                                            <XCircle className="w-4 h-4" /> Error al subir. Verifica el bucket en Supabase.
+                                        </p>
+                                    )}
+                                    <p className="text-[10px] text-slate-400 italic">PNG, JPG o SVG. Máx. 2MB.</p>
+                                </div>
                             </div>
 
                             <div className="flex flex-col items-center justify-center bg-slate-50 rounded-3xl p-8 border-2 border-dashed border-slate-200">
