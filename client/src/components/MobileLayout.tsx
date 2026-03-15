@@ -32,8 +32,8 @@ export default function MobileLayout({ children, title, showBackButton = true }:
     const navItems = [
         { icon: Home, label: 'Inicio', path: '/m' },
         { icon: Search, label: 'Reservar', path: '/m/book' },
-        { icon: Calendar, label: 'Mis Citas', path: '/m/my-bookings' },
-        { icon: User, label: 'Perfil', path: '/m/profile' },
+        { icon: Calendar, label: 'Mis Citas', path: '/m/history' },
+        { icon: User, label: 'Perfil', path: '/settings' },
     ];
 
     const isRootMobile = location.pathname === '/m';

@@ -7,6 +7,8 @@ import { PlusCircle, Calendar, History, Star, TrendingUp, Zap, ChevronRight, Loa
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { apiFetch } from '../lib/api';
+import { format } from 'date-fns';
+import { cn } from '../lib/utils';
 
 export default function MobileHome() {
     const navigate = useNavigate();

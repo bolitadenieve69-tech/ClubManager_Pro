@@ -33,12 +33,16 @@ export function generateHeatmap(
     const matrix = Array.from({ length: 7 }, () => Array(timeSlots.length).fill(0));
 
     for (const resv of reservations) {
-        const dayOfWeek = resv.start_time.getDay();
+        if (!resv.start_at) {
+            console.error("DEBUG: Reservation missing start_at:", resv);
+            continue;
+        }
+        const dayOfWeek = resv.start_at.getDay();
         const row = dayToIndex[dayOfWeek as keyof typeof dayToIndex];
         if (row === undefined) continue;
 
-        const startTotalMin = resv.start_time.getUTCHours() * 60 + resv.start_time.getUTCMinutes();
-        const endTotalMin = resv.end_time.getUTCHours() * 60 + resv.end_time.getUTCMinutes();
+        const startTotalMin = resv.start_at.getUTCHours() * 60 + resv.start_at.getUTCMinutes();
+        const endTotalMin = resv.end_at.getUTCHours() * 60 + resv.end_at.getUTCMinutes();
 
         timeSlots.forEach((slot, col) => {
             const [sh, sm] = slot.split(":").map(Number);

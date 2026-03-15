@@ -122,7 +122,7 @@ export default function Login() {
 
                             {/* Opción 3: Miembro del club (móvil) */}
                             <button
-                                onClick={() => navigate('/m/home')}
+                                onClick={() => navigate('/m')}
                                 className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left group"
                             >
                                 <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-colors">
