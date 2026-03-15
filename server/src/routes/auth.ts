@@ -23,7 +23,15 @@ const loginSchema = z.object({
 
 // POST /auth/register
 router.post('/register', asyncHandler(async (req: Request, res: Response) => {
-    const { email, password } = registerSchema.parse(req.body);
+    const { email, password, register_code } = z.object({
+        email: z.string().email('Email inválido'),
+        password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+        register_code: z.string().optional(),
+    }).parse(req.body);
+
+    if (env.REGISTER_SECRET && register_code !== env.REGISTER_SECRET) {
+        throw new ApiError(403, 'FORBIDDEN', 'Código de acceso incorrecto');
+    }
 
     const existingUser = await prisma.user.findUnique({
         where: { email },

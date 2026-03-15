@@ -10,6 +10,7 @@ const envSchema = z.object({
     JWT_SECRET: z.string(),
     CORS_ORIGIN: z.string().default('*'),
     APP_VERSION: z.string().default('1.0.0'),
+    REGISTER_SECRET: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

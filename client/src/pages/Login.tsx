@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, ApiError } from '../lib/api';
-import { LogIn, UserPlus, Smartphone, Mail, Lock, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { LogIn, UserPlus, Smartphone, Mail, Lock, KeyRound, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -13,6 +13,7 @@ export default function Login() {
     const [mode, setMode] = useState<Mode>('home');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [registerCode, setRegisterCode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -49,7 +50,7 @@ export default function Login() {
         try {
             const data = await apiFetch<{ token: string; user: { email: string } }>('/auth/register', {
                 method: 'POST',
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email, password, register_code: registerCode }),
             });
             localStorage.setItem('token', data.token);
             localStorage.setItem('user_email', data.user.email);
@@ -234,6 +235,15 @@ export default function Login() {
                                             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                         </button>
                                     }
+                                />
+                                <Input
+                                    label="Código de acceso"
+                                    type="password"
+                                    value={registerCode}
+                                    onChange={(e) => setRegisterCode(e.target.value)}
+                                    placeholder="••••••••"
+                                    required
+                                    icon={<KeyRound className="w-5 h-5 text-slate-300" />}
                                 />
                                 <Button type="submit" loading={loading} className="w-full py-4 text-sm tracking-widest mt-2">
                                     REGISTRAR CLUB
