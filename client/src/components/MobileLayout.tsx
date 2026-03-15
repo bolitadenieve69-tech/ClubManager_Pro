@@ -33,7 +33,7 @@ export default function MobileLayout({ children, title, showBackButton = true }:
         { icon: Home, label: 'Inicio', path: '/m' },
         { icon: Search, label: 'Reservar', path: '/m/book' },
         { icon: Calendar, label: 'Mis Citas', path: '/m/history' },
-        { icon: User, label: 'Perfil', path: '/settings' },
+        { icon: User, label: 'Perfil', path: '/m/profile' },
     ];
 
     const isRootMobile = location.pathname === '/m';

@@ -7,6 +7,7 @@ import { ApiError } from "../middleware/error.js";
 import { calculateReservationPrice } from "../utils/pricing.js";
 import { generateOccurrences, RecurringRule } from "../utils/recurring.js";
 import { randomUUID } from 'node:crypto';
+import { isWithinOpenHours } from "../utils/validation.js";
 
 export const reservationsRouter = Router();
 
@@ -45,15 +46,33 @@ reservationsRouter.get(
             where: { club_id: clubId, start_at: { lte: endOfDay }, end_at: { gte: startOfDay } }
         });
 
-        // 10:00 to 22:00 in 30min slots
+        const club = await prisma.club.findUnique({ where: { id: clubId! } });
+        const openHours = club?.open_hours ? JSON.parse(club.open_hours) : {};
+        const day = startOfDay.getDay().toString();
+        const schedule = openHours[day];
+
+        // 10:00 to 22:00 in 30min slots (FALLBACK if no schedule)
+        let startHour = 10;
+        let endHour = 22;
+
+        if (schedule) {
+            startHour = parseInt(schedule.open.split(':')[0]);
+            endHour = parseInt(schedule.close.split(':')[0]);
+            if (schedule.close.endsWith(':30')) endHour += 0.5; // Rough estimate for loop
+        }
+
         const slots = [];
-        for (let hour = 10; hour < 22; hour++) {
+        for (let hour = startHour; hour < endHour; hour++) {
             for (let min of [0, 30]) {
+                const hourInt = Math.floor(hour);
+                const minOffset = (hour % 1 !== 0) ? 30 : 0;
+                
                 const slotStart = new Date(startOfDay);
-                slotStart.setHours(hour, min, 0, 0);
+                slotStart.setHours(hourInt, min + minOffset, 0, 0);
                 const slotEnd = new Date(slotStart.getTime() + duration * 60000);
 
-                if (slotEnd.getHours() > 22 || (slotEnd.getHours() === 22 && slotEnd.getMinutes() > 0)) continue;
+                // Skip if before open or after close
+                if (!isWithinOpenHours(slotStart, slotEnd, openHours)) continue;
 
                 // For each court, check if available
                 const availableCourts = courtIds.filter(cId => {
@@ -69,7 +88,7 @@ reservationsRouter.get(
 
                 if (availableCourts.length >= courtCount) {
                     slots.push({
-                        time: `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
+                        time: `${hourInt.toString().padStart(2, '0')}:${(min + minOffset).toString().padStart(2, '0')}`,
                         courts: availableCourts.slice(0, courtCount)
                     });
                 }
@@ -121,6 +140,23 @@ reservationsRouter.post(
         if (conflict) throw new ApiError(409, "CONFLICT", "La pista ya no está disponible. Por favor, selecciona otra hora.");
 
         const club = await prisma.club.findUnique({ where: { id: clubId! } });
+        
+        // Fix: Check Opening Hours
+        if (!isWithinOpenHours(start, end, club?.open_hours || "{}")) {
+            throw new ApiError(400, "OUT_OF_HOURS", "La reserva está fuera del horario de apertura del club.");
+        }
+
+        // Fix: Check Blocks explicitly for HOLD creation
+        const blockConflict = await prisma.block.findFirst({
+            where: {
+                club_id: clubId!,
+                court_id: { in: courtIds },
+                start_at: { lt: end },
+                end_at: { gt: start }
+            }
+        });
+        if (blockConflict) throw new ApiError(409, "CONFLICT", "La pista está bloqueada por mantenimiento o evento.");
+
         const holdMinutes = club?.hold_minutes || 10;
 
         // Fix 2: Calculate price server-side using club pricing configuration
@@ -404,6 +440,28 @@ reservationsRouter.post(
             throw new ApiError(409, "CONFLICT", "La pista ya está reservada en este tramo horario.");
         }
 
+        // Fix: Check Opening Hours
+        const club = await prisma.club.findUnique({
+            where: { id: clubId },
+            select: { price_per_player_cents: true, slot_minutes: true, invoice_counter: true, open_hours: true }
+        });
+
+        if (!club) throw new ApiError(404, "NOT_FOUND", "Club no encontrado.");
+
+        if (!isWithinOpenHours(start, end, club.open_hours)) {
+            throw new ApiError(400, "OUT_OF_HOURS", "La reserva está fuera del horario de apertura del club.");
+        }
+
+        // Fix: Check Blocks for manual reservation
+        const blockOverlap = await prisma.block.findFirst({
+            where: {
+                court_id: parsed.court_id,
+                start_at: { lt: end },
+                end_at: { gt: start }
+            }
+        });
+        if (blockOverlap) throw new ApiError(409, "CONFLICT", "La pista está bloqueada en este horario.");
+
         // 3. Pricing
         const allPrices = await prisma.price.findMany({
             where: {
@@ -420,13 +478,6 @@ reservationsRouter.post(
             if (!a.court_id && b.court_id) return 1;
             return 0;
         });
-
-        const club = await prisma.club.findUnique({
-            where: { id: clubId },
-            select: { price_per_player_cents: true, slot_minutes: true, invoice_counter: true }
-        });
-
-        if (!club) throw new ApiError(404, "NOT_FOUND", "Club no encontrado.");
 
         const pricingResult = calculateReservationPrice(start, end, sortedPrices.map(p => ({
             hourly_rate: p.hourly_rate,

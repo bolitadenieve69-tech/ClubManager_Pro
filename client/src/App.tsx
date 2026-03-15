@@ -21,6 +21,7 @@ import MobileHome from './pages/MobileHome';
 import MobileBook from './pages/MobileBook';
 import MobileBookingDetail from './pages/MobileBookingDetail';
 import MobileHistory from './pages/MobileHistory';
+import MobileProfile from './pages/MobileProfile';
 import Members from './pages/Members';
 import Configuracion from './pages/Configuracion';
 
@@ -200,6 +201,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <MobileHistory />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/m/profile"
+                    element={
+                        <ProtectedRoute>
+                            <MobileProfile />
                         </ProtectedRoute>
                     }
                 />

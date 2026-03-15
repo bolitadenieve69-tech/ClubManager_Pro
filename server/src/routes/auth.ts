@@ -55,7 +55,7 @@ router.post('/register', asyncHandler(async (req: Request, res: Response) => {
             email,
             password_hash,
             club_id: club.id,
-            role: 'ADMIN',
+            role: 'USER',
         },
     });
 
