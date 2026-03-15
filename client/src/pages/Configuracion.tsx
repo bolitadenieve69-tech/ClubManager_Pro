@@ -49,7 +49,7 @@ export default function Configuracion() {
 
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        if (!file || !supabase) { setUploadStatus('error'); return; }
         setUploading(true);
         setUploadStatus('idle');
         try {
