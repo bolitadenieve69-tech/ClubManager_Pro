@@ -21,7 +21,7 @@ function getToken() {
     return localStorage.getItem("token");
 }
 
-const BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || "/api";
+const BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || "https://clubmanager-pro.onrender.com";
 
 export async function apiFetch<T>(
     path: string,
