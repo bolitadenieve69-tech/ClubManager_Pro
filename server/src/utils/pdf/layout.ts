@@ -23,8 +23,8 @@ export function addHeader(doc: typeof PDFDocument, reportType: string) {
     };
 
     // Logo simulado / Nombre del Club
-    doc.fillColor(COLORS.primary).fontSize(20).font("Helvetica-Bold").text("ClubManager", 50, 40, { continued: true });
-    doc.fillColor(COLORS.accent).text(" Padel");
+    doc.fillColor(COLORS.primary).fontSize(20).font("Helvetica-Bold").text("PadelClub", 50, 40, { continued: true });
+    doc.fillColor(COLORS.accent).text(" System");
 
     doc.fillColor(COLORS.muted).fontSize(10).font("Helvetica").text("Gestión Profesional de Clubs", 50, 65);
 
@@ -47,7 +47,7 @@ export function addFooter(doc: typeof PDFDocument) {
 
         doc.moveTo(50, bottom - 10).lineTo(545, bottom - 10).strokeColor(COLORS.border).stroke();
 
-        doc.fontSize(8).fillColor(COLORS.muted).text("Antigravity · ClubManager - Confidencial para uso interno", 50, bottom, { align: "left" });
+        doc.fontSize(8).fillColor(COLORS.muted).text("Antigravity · PadelClub - Confidencial para uso interno", 50, bottom, { align: "left" });
         doc.text(`Página ${i + 1} de ${range.count}`, 50, bottom, { align: "right" });
     }
 }

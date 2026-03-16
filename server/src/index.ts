@@ -56,7 +56,7 @@ app.get('/debug/stats', authMiddleware as any, adminOnly as any, async (req, res
 
 // Root route
 app.get('/', (req, res) => {
-    res.send('ClubManager Pro API is running');
+    res.send('PadelClub API is running');
 });
 
 // Routes
