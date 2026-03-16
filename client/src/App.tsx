@@ -25,6 +25,16 @@ import MobileProfile from './pages/MobileProfile';
 import Members from './pages/Members';
 import Configuracion from './pages/Configuracion';
 
+function SmartRedirect() {
+    const token = localStorage.getItem('token');
+    if (!token) return <Navigate to="/login" replace />;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.role === 'USER') return <Navigate to="/m" replace />;
+    } catch { /* invalid token, fall through */ }
+    return <Navigate to="/dashboard" replace />;
+}
+
 function App() {
     return (
         <BrowserRouter>
@@ -212,8 +222,8 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={<SmartRedirect />} />
+                <Route path="*" element={<SmartRedirect />} />
             </Routes>
         </BrowserRouter>
     );

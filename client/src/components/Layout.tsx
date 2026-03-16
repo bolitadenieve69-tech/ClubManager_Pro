@@ -1,5 +1,6 @@
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { PadelLogo } from "./PadelLogo";
 import { fetchMe, clearSession } from "../lib/auth";
 import {
     LayoutDashboard,
@@ -138,7 +139,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             whileHover={{ rotate: -12, scale: 1.1 }}
                             className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-lg shadow-primary-900/40"
                         >
-                            <span className="text-xs font-black">PC</span>
+                            <PadelLogo className="w-6 h-6 text-white" />
                         </motion.div>
                         <div className="flex flex-col -gap-1">
                             <span className="leading-none text-white/90">PadelClub</span>

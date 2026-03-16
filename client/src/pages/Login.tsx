@@ -1,17 +1,19 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, ApiError } from '../lib/api';
-import { LogIn, UserPlus, Smartphone, Mail, Lock, KeyRound, AlertCircle, Eye, EyeOff, ArrowLeft, ShieldCheck, Trophy } from 'lucide-react';
+import { LogIn, UserPlus, Smartphone, Mail, Lock, KeyRound, AlertCircle, Eye, EyeOff, ArrowLeft, ShieldCheck, Trophy, Smartphone as SmartphoneIcon } from 'lucide-react';
+import { PadelLogo } from '../components/PadelLogo';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type Mode = 'home' | 'login' | 'register';
+type Mode = 'home' | 'login' | 'register' | 'member';
 
 export default function Login() {
     const navigate = useNavigate();
     const [mode, setMode] = useState<Mode>('home');
     const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [registerCode, setRegisterCode] = useState('');
     const [error, setError] = useState('');
@@ -21,6 +23,7 @@ export default function Login() {
     function reset() {
         setError('');
         setEmail('');
+        setPhone('');
         setPassword('');
         setShowPassword(false);
     }
@@ -38,6 +41,25 @@ export default function Login() {
             navigate('/dashboard');
         } catch (e: any) {
             if (e instanceof ApiError) setError(e.message);
+            else setError('Error desconocido.');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function loginMember() {
+        setError('');
+        setLoading(true);
+        try {
+            const virtualEmail = `${phone.trim()}@guest.club`;
+            const data = await apiFetch<{ token: string }>('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ email: virtualEmail, password }),
+            });
+            localStorage.setItem('token', data.token);
+            navigate('/m');
+        } catch (e: any) {
+            if (e instanceof ApiError) setError('Teléfono o contraseña incorrectos.');
             else setError('Error desconocido.');
         } finally {
             setLoading(false);
@@ -66,6 +88,7 @@ export default function Login() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (mode === 'register') await register();
+        else if (mode === 'member') await loginMember();
         else await login();
     };
 
@@ -99,7 +122,7 @@ export default function Login() {
                 >
                     <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-900 rounded-[2rem] shadow-2xl mb-6 relative group overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-tr from-primary-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="text-white text-3xl font-black italic tracking-tighter relative z-10">PC</span>
+                        <PadelLogo className="w-12 h-12 text-white relative z-10" />
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-500 rounded-lg flex items-center justify-center shadow-lg">
                             <ShieldCheck className="w-3.5 h-3.5 text-white" />
                         </div>
@@ -180,7 +203,7 @@ export default function Login() {
                                         variants={itemVariants}
                                         whileHover={{ x: 5, backgroundColor: 'rgba(59, 130, 246, 0.05)' }}
                                         whileTap={{ scale: 0.98 }}
-                                        onClick={() => navigate('/m')}
+                                        onClick={() => { reset(); setMode('member'); }}
                                         className="w-full flex items-center gap-5 p-5 rounded-[1.5rem] border border-slate-100 bg-white shadow-sm hover:border-blue-200 transition-all text-left relative group overflow-hidden"
                                     >
                                         <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-100 transition-colors">
@@ -195,6 +218,97 @@ export default function Login() {
                                         </div>
                                     </motion.button>
                                 </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {mode === 'member' && (
+                        <motion.div
+                            key="member"
+                            variants={containerVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                        >
+                            <div className="glass p-10 rounded-[2.5rem] shadow-premium border-white/40 space-y-8">
+                                <div className="flex items-center gap-4">
+                                    <motion.button
+                                        whileHover={{ scale: 1.1, backgroundColor: 'rgba(0,0,0,0.05)' }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={() => { reset(); setMode('home'); }}
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors border border-slate-100 bg-white/50 shadow-sm"
+                                    >
+                                        <ArrowLeft className="w-5 h-5" />
+                                    </motion.button>
+                                    <div className="space-y-0.5">
+                                        <h2 className="text-xl font-black text-slate-900 uppercase italic">
+                                            Acceso <span className="text-blue-600">Miembro</span>
+                                        </h2>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">App móvil del club</p>
+                                    </div>
+                                </div>
+
+                                <AnimatePresence mode="wait">
+                                    {error && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl flex items-center gap-3 text-xs font-bold uppercase tracking-tight"
+                                        >
+                                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                            <p>{error}</p>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
+                                <form onSubmit={handleSubmit} className="space-y-5">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Teléfono WhatsApp</label>
+                                            <Input
+                                                type="tel"
+                                                value={phone}
+                                                onChange={(e) => setPhone(e.target.value)}
+                                                placeholder="Ej: +34600000000"
+                                                required
+                                                className="h-14 rounded-2xl bg-white/80 border-slate-100 focus:ring-blue-500 shadow-sm"
+                                                icon={<Smartphone className="w-5 h-5 text-slate-300" />}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Contraseña</label>
+                                            <Input
+                                                type={showPassword ? 'text' : 'password'}
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                placeholder="••••••••"
+                                                required
+                                                className="h-14 rounded-2xl bg-white/80 border-slate-100 focus:ring-blue-500 shadow-sm"
+                                                icon={<Lock className="w-5 h-5 text-slate-300" />}
+                                                rightElement={
+                                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="focus:outline-none hover:text-blue-600 transition-colors p-2">
+                                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                                    </button>
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                    <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }} className="pt-2">
+                                        <Button
+                                            type="submit"
+                                            loading={loading}
+                                            className="w-full py-7 text-xs font-black tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 transition-all uppercase"
+                                        >
+                                            ENTRAR A MI APP
+                                        </Button>
+                                    </motion.div>
+                                    <div className="flex items-center justify-center gap-4 text-slate-300 pt-4">
+                                        <div className="h-[1px] flex-1 bg-slate-100" />
+                                        <span className="text-[8px] font-black uppercase tracking-[0.3em]">Secure Connection</span>
+                                        <div className="h-[1px] flex-1 bg-slate-100" />
+                                    </div>
+                                </form>
                             </div>
                         </motion.div>
                     )}

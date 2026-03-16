@@ -51,7 +51,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     // Role-based redirection for guests (USER role)
     const isAdminRoute = !location.pathname.startsWith('/m');
     if (userRole === 'USER' && isAdminRoute) {
-        return <Navigate to="/m/book" replace />;
+        return <Navigate to="/m" replace />;
     }
 
     return <>{children}</>;

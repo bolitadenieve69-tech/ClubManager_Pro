@@ -1,5 +1,6 @@
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { fetchMe } from "../lib/auth";
+import { PadelLogo } from "./PadelLogo";
 import { Home, Calendar, User, Search, ChevronLeft } from 'lucide-react';
 import { apiFetch } from "../lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -72,7 +73,7 @@ export default function MobileLayout({ children, title, showBackButton = true }:
                         <img src={club.logo_url} alt="Logo" className="w-full h-full object-contain" />
                     ) : (
                         <div className="w-full h-full rounded-[12px] bg-slate-900 flex items-center justify-center text-white font-black text-[10px] tracking-widest">
-                            {club?.display_name ? club.display_name[0].toUpperCase() : "PC"}
+                            {club?.display_name ? club.display_name[0].toUpperCase() : <PadelLogo className="w-5 h-5 text-white" />}
                         </div>
                     )}
                 </motion.div>

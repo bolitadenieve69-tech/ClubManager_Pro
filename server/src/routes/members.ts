@@ -118,7 +118,10 @@ membersRouter.get(
 membersRouter.post(
     "/invitations/accept",
     asyncHandler(async (req, res) => {
-        const { token } = z.object({ token: z.string() }).parse(req.body);
+        const { token, password } = z.object({
+            token: z.string(),
+            password: z.string().min(4)
+        }).parse(req.body);
 
         const invitation = await prisma.invitation.findUnique({
             where: { token },
@@ -148,17 +151,14 @@ membersRouter.post(
                 data: { status: "APPROVED" }
             });
 
-            // 3. Create User if not exists (using phone as part of email/fake email for guests)
-            // Or better, if the member has an email handle it, but here we only have phone.
-            // Requirement says "whatsapp... reserve... from there".
-            // We'll use a virtual email for guest flow: phone@guest.club
+            // 3. Create User with the password chosen by the member
+            // Virtual email: phone@guest.club (used for login with phone number)
             const virtualEmail = `${member.whatsapp_phone}@guest.club`;
 
             let user = await tx.user.findUnique({ where: { email: virtualEmail } });
 
             if (!user) {
-                const dummyPassword = crypto.randomBytes(16).toString("hex");
-                const password_hash = await bcrypt.hash(dummyPassword, 10);
+                const password_hash = await bcrypt.hash(password, 10);
 
                 user = await tx.user.create({
                     data: {
@@ -185,7 +185,7 @@ membersRouter.post(
         const sessionToken = jwt.sign(
             { userId: user!.id, clubId: user!.club_id, role: user!.role, email: user!.email },
             env.JWT_SECRET,
-            { expiresIn: "7d" }
+            { expiresIn: "30d" }
         );
 
         res.json({
