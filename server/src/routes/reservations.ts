@@ -7,7 +7,7 @@ import { ApiError } from "../middleware/error.js";
 import { calculateReservationPrice } from "../utils/pricing.js";
 import { generateOccurrences, RecurringRule } from "../utils/recurring.js";
 import { randomUUID } from 'node:crypto';
-import { isWithinOpenHours } from "../utils/validation.js";
+import { isWithinOpenHours, getSpainHHMM, getSpainDay, spainLocalToUtc } from "../utils/validation.js";
 
 export const reservationsRouter = Router();
 
@@ -48,7 +48,7 @@ reservationsRouter.get(
 
         const club = await prisma.club.findUnique({ where: { id: clubId! } });
         const openHours = club?.open_hours ? JSON.parse(club.open_hours) : {};
-        const day = startOfDay.getDay().toString();
+        const day = getSpainDay(startOfDay).toString();
         const schedule = openHours[day];
 
         // 10:00 to 22:00 in 30min slots (FALLBACK if no schedule)
@@ -74,7 +74,8 @@ reservationsRouter.get(
                 // Skip if before open or after close
                 if (!isWithinOpenHours(slotStart, slotEnd, openHours)) continue;
 
-                const timeStr = `${hourInt.toString().padStart(2, '0')}:${(min + minOffset).toString().padStart(2, '0')}`;
+                // Return time in Spain local time so the slot grid matches club wall-clock time
+                const timeStr = getSpainHHMM(slotStart);
 
                 // For each court, check if available
                 const availableCourts = courtIds.filter(cId => {
@@ -114,8 +115,8 @@ reservationsRouter.post(
             duration: z.number().min(30).max(300),
         }).parse(req.body);
 
-        // Build dates server-side (no timezone conversion issues)
-        const start = new Date(`${date}T${startTime}:00`);
+        // Client sends Spain local time; convert to UTC for DB storage
+        const start = spainLocalToUtc(date, startTime);
         const end = new Date(start.getTime() + duration * 60000);
 
         // Fix 1: Re-verify availability to prevent race conditions
