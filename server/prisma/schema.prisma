@@ -41,6 +41,7 @@ model Club {
   rates                  Rate[]
   supplier_invoices      SupplierInvoice[]
   tournaments            Tournament[]
+  announcements          Announcement[]
   users                  User[]
   min_deposit_cents      Int               @default(0)
   hold_minutes           Int               @default(10)
@@ -362,4 +363,21 @@ model SupplierInvoice {
 
   @@index([club_id])
   @@index([date])
+}
+
+model Announcement {
+  id          String    @id @default(uuid())
+  club_id     String
+  title       String
+  body        String
+  image_url   String?
+  cta_label   String?
+  cta_url     String?
+  active      Boolean   @default(true)
+  pinned      Boolean   @default(false)
+  created_at  DateTime  @default(now())
+  expires_at  DateTime?
+  club        Club      @relation(fields: [club_id], references: [id])
+
+  @@index([club_id, active])
 }

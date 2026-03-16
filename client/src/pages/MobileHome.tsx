@@ -3,7 +3,7 @@ import MobileLayout from '../components/MobileLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { PlusCircle, Calendar, History, Star, TrendingUp, Zap, ChevronRight, Loader2 } from 'lucide-react';
+import { PlusCircle, Calendar, History, Star, TrendingUp, Zap, ChevronRight, Loader2, Megaphone, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { apiFetch } from '../lib/api';
@@ -14,12 +14,12 @@ export default function MobileHome() {
     const navigate = useNavigate();
     const [stats, setStats] = useState({ reservations: 0, matches: 0 });
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
+    const [announcements, setAnnouncements] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                // Endpoint defined in users.ts or analytics.ts typically
                 const data = await apiFetch<any>('/users/me/stats');
                 setStats({
                     reservations: data.activeReservations || 0,
@@ -28,6 +28,9 @@ export default function MobileHome() {
 
                 const activityData = await apiFetch<any[]>('/users/me/activity');
                 setRecentActivity(activityData.slice(0, 3));
+
+                const annData = await apiFetch<any>('/announcements');
+                setAnnouncements(annData.announcements || []);
             } catch (err) {
                 console.error("Error fetching stats:", err);
             } finally {
@@ -168,6 +171,36 @@ export default function MobileHome() {
                         </div>
                     )}
                 </div>
+
+                {/* Announcements */}
+                {announcements.length > 0 && (
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 px-2">
+                            <Megaphone className="w-4 h-4 text-primary-500" />
+                            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.25em]">Novedades del Club</h3>
+                        </div>
+                        {announcements.map(a => (
+                            <motion.div
+                                key={a.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-white border border-slate-100 rounded-3xl p-6 space-y-3 shadow-sm"
+                            >
+                                {a.image_url && (
+                                    <img src={a.image_url} alt={a.title} className="w-full rounded-2xl object-cover max-h-40" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                )}
+                                <h4 className="font-black text-slate-900 text-sm">{a.title}</h4>
+                                <p className="text-xs text-slate-500 font-medium leading-relaxed">{a.body}</p>
+                                {a.cta_label && a.cta_url && (
+                                    <a href={a.cta_url} target="_blank" rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 text-[10px] font-black text-primary-600 uppercase tracking-widest">
+                                        <ExternalLink className="w-3 h-3" /> {a.cta_label}
+                                    </a>
+                                )}
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
 
                 {/* Visual Accent */}
                 <motion.div

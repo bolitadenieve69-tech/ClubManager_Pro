@@ -24,6 +24,7 @@ import MobileHistory from './pages/MobileHistory';
 import MobileProfile from './pages/MobileProfile';
 import Members from './pages/Members';
 import Configuracion from './pages/Configuracion';
+import Comunicaciones from './pages/Comunicaciones';
 
 function SmartRedirect() {
     const token = localStorage.getItem('token');
@@ -173,6 +174,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <Configuracion />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/comunicaciones"
+                    element={
+                        <ProtectedRoute>
+                            <Comunicaciones />
                         </ProtectedRoute>
                     }
                 />

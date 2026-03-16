@@ -21,7 +21,8 @@ import {
     Menu,
     X,
     Settings,
-    ArrowLeft
+    ArrowLeft,
+    Megaphone
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../lib/utils";
@@ -46,6 +47,7 @@ const PAGE_TITLES: Record<string, string> = {
     '/analytics': 'Analítica',
     '/insights': 'Insights',
     '/reports': 'Reportes',
+    '/comunicaciones': 'Comunicaciones',
 };
 
 const navigationGroups = [
@@ -59,6 +61,7 @@ const navigationGroups = [
             { name: "Reservas", path: "/reservations", icon: CalendarCheck },
             { name: "Americano", path: "/tournaments", icon: Trophy },
             { name: "Socios", path: "/members", icon: Users },
+            { name: "Comunicaciones", path: "/comunicaciones", icon: Megaphone },
             { name: "Configuración", path: "/settings", icon: Settings },
         ]
     },
