@@ -6,9 +6,8 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Share2, Clock, MessageCircle, Info, Copy, Wallet, ChevronRight, Check, Loader2, Users, MapPin, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '../lib/utils';
+import { cn, fmtSlot } from '../lib/utils';
 import { apiFetch } from '../lib/api';
-import { format } from 'date-fns';
 
 export default function MobileBookingDetail() {
     const { id } = useParams<{ id: string }>();
@@ -259,7 +258,7 @@ export default function MobileBookingDetail() {
                                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
                                     <Calendar className="w-5 h-5 text-slate-400" />
                                 </div>
-                                <span className="font-black text-slate-900 uppercase text-xs tracking-tighter">{format(new Date(booking.start_at), 'dd MMM, HH:mm')}</span>
+                                <span className="font-black text-slate-900 uppercase text-xs tracking-tighter">{fmtSlot(booking.start_at)}</span>
                             </div>
                             <div className="text-right">
                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Horario</p>

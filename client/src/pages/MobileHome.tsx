@@ -7,8 +7,7 @@ import { PlusCircle, Calendar, History, Star, TrendingUp, Zap, ChevronRight, Loa
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { apiFetch } from '../lib/api';
-import { format } from 'date-fns';
-import { cn } from '../lib/utils';
+import { cn, fmtSlot } from '../lib/utils';
 
 export default function MobileHome() {
     const navigate = useNavigate();
@@ -162,7 +161,7 @@ export default function MobileHome() {
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-black text-slate-900 uppercase">{item.court?.name}</p>
-                                            <p className="text-[8px] font-bold text-slate-400 uppercase">{format(new Date(item.start_at), 'dd MMM, HH:mm')}</p>
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase">{fmtSlot(item.start_at)}</p>
                                         </div>
                                     </div>
                                     <ChevronRight className="w-4 h-4 text-slate-300" />

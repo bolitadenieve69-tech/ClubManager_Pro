@@ -6,8 +6,7 @@ import { History, Calendar, MapPin, ChevronRight, Loader2, Zap } from 'lucide-re
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { apiFetch } from '../lib/api';
-import { format } from 'date-fns';
-import { cn } from '../lib/utils';
+import { cn, fmtSlot } from '../lib/utils';
 
 export default function MobileHistory() {
     const navigate = useNavigate();
@@ -80,7 +79,7 @@ export default function MobileHistory() {
                                             <div className="flex items-center gap-3 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                                                 <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> PISTA</span>
                                                 <span>•</span>
-                                                <span>{format(new Date(item.start_at), 'dd MMM, HH:mm')}</span>
+                                                <span>{fmtSlot(item.start_at)}</span>
                                             </div>
                                         </div>
                                     </div>
