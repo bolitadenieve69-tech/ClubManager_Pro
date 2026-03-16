@@ -41,9 +41,9 @@ async function stressTest() {
     const duration = Date.now() - startTime;
 
     // 3. Analyze results
-    const successes = responses.filter(r => r.status === 200 || r.status === 201);
-    const conflicts = responses.filter(r => r.status === 409);
-    const errors = responses.filter(r => r.status !== 200 && r.status !== 201 && r.status !== 409);
+    const successes = responses.filter((r: any) => r.status === 200 || r.status === 201);
+    const conflicts = responses.filter((r: any) => r.status === 409);
+    const errors = responses.filter((r: any) => r.status !== 200 && r.status !== 201 && r.status !== 409);
 
     console.log('\n📊 Stress Test Results:');
     console.log(`- Total Requests: ${NUM_REQUESTS}`);
