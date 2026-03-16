@@ -63,6 +63,12 @@ membersRouter.post(
             });
         }
 
+        // Cancel any previous pending invitations for this member
+        await prisma.invitation.updateMany({
+            where: { member_id: member.id, status: "PENDING" },
+            data: { status: "CANCELLED" }
+        });
+
         const token = crypto.randomBytes(32).toString("hex");
         const invitation = await prisma.invitation.create({
             data: {
@@ -155,11 +161,10 @@ membersRouter.post(
             // Virtual email: phone@guest.club (used for login with phone number)
             const virtualEmail = `${member.whatsapp_phone}@guest.club`;
 
+            const password_hash = await bcrypt.hash(password, 10);
             let user = await tx.user.findUnique({ where: { email: virtualEmail } });
 
             if (!user) {
-                const password_hash = await bcrypt.hash(password, 10);
-
                 user = await tx.user.create({
                     data: {
                         email: virtualEmail,
@@ -168,6 +173,12 @@ membersRouter.post(
                         club_id: invitation.club_id,
                         role: "USER"
                     }
+                });
+            } else {
+                // Member already existed — update password so they can recover access
+                user = await tx.user.update({
+                    where: { id: user.id },
+                    data: { password_hash }
                 });
             }
 
