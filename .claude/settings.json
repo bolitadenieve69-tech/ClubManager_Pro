@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"authMiddleware\\\\|adminOnly\" /Users/angelguerraiglesias/Documents/AI_Antigravity/ClubManager_Pro/server/src/routes/*.ts)",
+      "Bash(grep -v \"^$\")"
+    ]
+  }
+}

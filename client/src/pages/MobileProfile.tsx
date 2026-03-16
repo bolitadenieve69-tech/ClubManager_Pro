@@ -204,7 +204,7 @@ export default function MobileProfile() {
                 </motion.button>
 
                 <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] py-4">
-                    ClubManager Pro Version 1.0.2
+                    PadelClub Edición 2026
                 </p>
             </main>
         </div>

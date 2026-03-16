@@ -458,7 +458,7 @@ export default function HorarioDiario() {
                 )}
 
                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] text-center mt-8 print:block hidden">
-                    ClubManager Pro &copy; {new Date().getFullYear()} — Generado el {format(new Date(), 'dd/MM/yyyy HH:mm')}
+                    PadelClub &copy; {new Date().getFullYear()} — Generado el {format(new Date(), 'dd/MM/yyyy HH:mm')}
                 </p>
             </div>
         </Layout>

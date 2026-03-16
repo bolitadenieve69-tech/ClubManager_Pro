@@ -1,6 +1,6 @@
-# ClubManager Pro
+# PadelClub
 
-**ClubManager Pro** is a comprehensive solution for managing sports clubs, offering court bookings, billing, and member management. It features a modern React frontend and a robust Node.js/Express backend with PostgreSQL.
+**PadelClub** is a comprehensive solution for managing padel clubs, offering court bookings, billing, and member management. It features a modern React frontend and a robust Node.js/Express backend with PostgreSQL.
 
 ## 🚀 Features
 
@@ -100,4 +100,4 @@ npx ts-node scripts/diagnose_db.ts
 
 ## 📄 License
 
-Private - ClubManager Pro System.
+Private - PadelClub System.

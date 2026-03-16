@@ -181,7 +181,7 @@ export default function MobileAcceptInvite() {
                 <div className="h-px w-8 bg-slate-200" />
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-primary-500" />
-                    ClubManager <span className="text-slate-900">PRO</span>
+                    PadelClub <span className="text-slate-900">2026</span>
                 </p>
                 <div className="h-px w-8 bg-slate-200" />
             </motion.div>

@@ -58,7 +58,7 @@ export default function MobileLayout({ children, title, showBackButton = true }:
                     >
                         <div className="w-2 h-6 bg-primary-500 rounded-full" />
                         <h1 className="text-xl font-black text-slate-900 tracking-tighter italic uppercase">
-                            {club?.display_name || title || "ClubManager"} {!club?.display_name && <span className="text-primary-600">Pro</span>}
+                            {club?.display_name || title || "PadelClub"}
                         </h1>
                     </motion.div>
                 </div>
@@ -72,7 +72,7 @@ export default function MobileLayout({ children, title, showBackButton = true }:
                         <img src={club.logo_url} alt="Logo" className="w-full h-full object-contain" />
                     ) : (
                         <div className="w-full h-full rounded-[12px] bg-slate-900 flex items-center justify-center text-white font-black text-[10px] tracking-widest">
-                            {club?.display_name ? club.display_name[0].toUpperCase() : "CM"}
+                            {club?.display_name ? club.display_name[0].toUpperCase() : "PC"}
                         </div>
                     )}
                 </motion.div>

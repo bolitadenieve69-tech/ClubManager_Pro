@@ -38,7 +38,7 @@ export default function MobileHome() {
     }, []);
 
     return (
-        <MobileLayout title="ClubManager Pro">
+        <MobileLayout title="PadelClub">
             <div className="space-y-10 pb-10">
                 {/* Visual Hero Section */}
                 <motion.div

@@ -138,11 +138,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             whileHover={{ rotate: -12, scale: 1.1 }}
                             className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-lg shadow-primary-900/40"
                         >
-                            <span className="text-xs font-black">CM</span>
+                            <span className="text-xs font-black">PC</span>
                         </motion.div>
                         <div className="flex flex-col -gap-1">
-                            <span className="leading-none text-white/90">ClubManager</span>
-                            <span className="text-primary-400 text-[10px] tracking-[0.25em] font-black uppercase">Pro System</span>
+                            <span className="leading-none text-white/90">PadelClub</span>
+                            <span className="text-primary-400 text-[9px] tracking-widest font-black uppercase">Gestión 2026</span>
                         </div>
                     </h2>
                     <button

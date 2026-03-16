@@ -99,7 +99,7 @@ export default function Login() {
                 >
                     <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-900 rounded-[2rem] shadow-2xl mb-6 relative group overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-tr from-primary-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="text-white text-3xl font-black italic tracking-tighter relative z-10">CM</span>
+                        <span className="text-white text-3xl font-black italic tracking-tighter relative z-10">PC</span>
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-500 rounded-lg flex items-center justify-center shadow-lg">
                             <ShieldCheck className="w-3.5 h-3.5 text-white" />
                         </div>
@@ -109,7 +109,7 @@ export default function Login() {
                         animate={{ opacity: 1, y: 0 }}
                         className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase"
                     >
-                        ClubManager <span className="text-primary-600">Pro</span>
+                        PadelClub
                     </motion.h1>
                     <motion.p 
                         initial={{ opacity: 0 }}
@@ -117,7 +117,7 @@ export default function Login() {
                         transition={{ delay: 0.2 }}
                         className="text-slate-400 mt-3 font-bold uppercase tracking-[0.2em] text-[10px]"
                     >
-                        Management System • Edition 2024
+                        Gestión de Clubes de Padel - Edición 2026
                     </motion.p>
                 </motion.div>
 
@@ -333,7 +333,7 @@ export default function Login() {
                         </div>
                     </div>
                     <p className="text-slate-300 text-[10px] font-bold uppercase tracking-widest">
-                        &copy; 2024 ClubManager Pro System • v1.0.2
+                        &copy; 2026 PadelClub System • v1.0.3
                     </p>
                 </motion.div>
             </div>
