@@ -77,7 +77,7 @@ membersRouter.post(
                 inviter_user_id: req.user?.userId,
                 token,
                 status: "PENDING",
-                expires_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7) // 7 days
+                expires_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 days
             }
         });
 
