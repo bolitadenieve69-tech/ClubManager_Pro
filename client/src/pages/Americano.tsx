@@ -379,22 +379,22 @@ export default function Americano() {
                                                 {new Date(t.date).toLocaleDateString()}
                                             </span>
                                             {(role === 'ADMIN' || role === 'OWNER') && (
-                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex gap-1">
                                                     {!showArchived && (
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleArchive(t.id); }}
-                                                            className="p-1 hover:bg-white/20 rounded text-white"
+                                                            className={cn("p-1.5 rounded-lg transition-colors", selected === t.id ? "text-indigo-200 hover:bg-white/20" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600")}
                                                             title="Archivar"
                                                         >
-                                                            <Archive className="w-3 h-3" />
+                                                            <Archive className="w-3.5 h-3.5" />
                                                         </button>
                                                     )}
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
-                                                        className="p-1 hover:bg-white/20 rounded text-white"
+                                                        className={cn("p-1.5 rounded-lg transition-colors", selected === t.id ? "text-red-300 hover:bg-white/20" : "text-slate-400 hover:bg-red-50 hover:text-red-500")}
                                                         title="Borrar definitivo"
                                                     >
-                                                        <Trash2 className="w-3 h-3" />
+                                                        <Trash2 className="w-3.5 h-3.5" />
                                                     </button>
                                                 </div>
                                             )}
