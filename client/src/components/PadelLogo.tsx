@@ -8,26 +8,22 @@ export const PadelLogo = ({ className = "w-12 h-12" }: { className?: string }) =
       xmlns="http://www.w3.org/2000/svg" 
       className={className}
     >
-      {/* Racket Frame */}
+      {/* Frame of the Padel Racket */}
       <path 
-        d="M50 15C35 15 22 27 22 42C22 52 28 61 38 66L42 85H58L62 66C72 61 78 52 78 42C78 27 65 15 50 15Z" 
+        d="M50 10C30 10 15 25 15 45C15 58 22 69 32 75L35 90H65L68 75C78 69 85 58 85 45C85 25 70 10 50 10Z" 
         fill="currentColor" 
       />
-      {/* Holes pattern (abstract) */}
-      <circle cx="50" cy="32" r="3" fill="white" fillOpacity="0.3" />
-      <circle cx="40" cy="38" r="3" fill="white" fillOpacity="0.3" />
-      <circle cx="60" cy="38" r="3" fill="white" fillOpacity="0.3" />
-      <circle cx="50" cy="44" r="3" fill="white" fillOpacity="0.3" />
-      <circle cx="40" cy="50" r="3" fill="white" fillOpacity="0.3" />
-      <circle cx="60" cy="50" r="3" fill="white" fillOpacity="0.3" />
-      {/* Accent Line */}
-      <path 
-        d="M42 85L50 65L58 85" 
-        stroke="white" 
-        strokeWidth="2" 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
-      />
+      {/* Grid of holes to make it look like a Padel racket */}
+      <circle cx="50" cy="30" r="2.5" fill="white" fillOpacity="0.4" />
+      <circle cx="38" cy="35" r="2.5" fill="white" fillOpacity="0.4" />
+      <circle cx="62" cy="35" r="2.5" fill="white" fillOpacity="0.4" />
+      <circle cx="50" cy="45" r="2.5" fill="white" fillOpacity="0.4" />
+      <circle cx="38" cy="55" r="2.5" fill="white" fillOpacity="0.4" />
+      <circle cx="62" cy="55" r="2.5" fill="white" fillOpacity="0.4" />
+      <circle cx="50" cy="65" r="2.5" fill="white" fillOpacity="0.4" />
+      
+      {/* Handle detail */}
+      <rect x="42" y="80" width="16" height="4" rx="1" fill="white" fillOpacity="0.2" />
     </svg>
   );
 };
