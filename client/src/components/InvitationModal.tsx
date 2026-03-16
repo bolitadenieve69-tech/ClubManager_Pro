@@ -52,7 +52,7 @@ export default function InvitationModal({ isOpen, onClose, onSuccess, member }: 
             setSuccessData(data);
             const publicUrl = (import.meta as any).env.VITE_PUBLIC_URL || window.location.origin;
             const inviteLink = `${publicUrl}${data.inviteUrl}`;
-            setMessage(`¡Hola ${m.full_name}! 👋 Bienvenido a nuestro club. Ya puedes reservar pistas y pagar desde tu móvil aquí: ${inviteLink}`);
+            setMessage(`¡Hola ${m.full_name}! 👋\n\nTe invitamos a unirte a la app del club. Podrás reservar pistas y gestionar tus pagos desde el móvil.\n\nPulsa aquí para activar tu acceso 👇\n${inviteLink}`);
         } catch (err) {
             console.error("Error creating invitation:", err);
         } finally {
@@ -71,7 +71,7 @@ export default function InvitationModal({ isOpen, onClose, onSuccess, member }: 
             setSuccessData(data);
             const publicUrl = (import.meta as any).env.VITE_PUBLIC_URL || window.location.origin;
             const inviteLink = `${publicUrl}${data.inviteUrl}`;
-            setMessage(`¡Hola ${fullName}! 👋 Bienvenido a nuestro club. Ya puedes reservar pistas y pagar desde tu móvil aquí: ${inviteLink}`);
+            setMessage(`¡Hola ${fullName}! 👋\n\nTe invitamos a unirte a la app del club. Podrás reservar pistas y gestionar tus pagos desde el móvil.\n\nPulsa aquí para activar tu acceso 👇\n${inviteLink}`);
             onSuccess();
         } catch (err) {
             console.error("Error creating invitation:", err);
