@@ -490,9 +490,16 @@ export default function Tarifas() {
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">€</span>
                                                 <input
-                                                    type="number" min="0" step="0.50"
-                                                    value={seasonForm.hourly_rate} placeholder="0,00"
-                                                    onChange={e => setSeasonForm(p => ({ ...p, hourly_rate: e.target.value }))}
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    value={seasonForm.hourly_rate} 
+                                                    placeholder="0,00"
+                                                    onChange={e => {
+                                                        const val = e.target.value.replace(',', '.');
+                                                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                            setSeasonForm(p => ({ ...p, hourly_rate: val }));
+                                                        }
+                                                    }}
                                                     className="w-full bg-white border border-violet-200 rounded-lg pl-8 pr-10 py-2 text-sm focus:ring-2 focus:ring-violet-400 outline-none"
                                                 />
                                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">/h</span>
@@ -635,8 +642,8 @@ export default function Tarifas() {
                                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                                         {simResult.breakdown.map((b: any, i: number) => (
                                             <div key={i} className="flex items-center justify-between text-xs py-2 px-3 bg-slate-800/50 rounded-lg">
-                                                <span className="text-slate-300 font-medium">{b.start} – {b.end ?? ""}</span>
-                                                <span className="font-bold">{(b.rateCents / 100).toFixed(2).replace(".", ",")} €</span>
+                                                <span className="text-slate-300 font-medium">{b.start.split('T')[1]?.substring(0, 5) || b.start} – {b.end?.split('T')[1]?.substring(0, 5) || b.end || ""}</span>
+                                                <span className="font-bold">{((b.rateCents || 0) / 100).toFixed(2).replace(".", ",")} €</span>
                                             </div>
                                         ))}
                                     </div>
