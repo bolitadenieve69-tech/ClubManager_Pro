@@ -5,12 +5,12 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { CheckCircle2, Loader2, XCircle, Sparkles, ShieldCheck, ArrowRight, UserCheck, AlertCircle, Eye, EyeOff, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { apiFetch } from "../lib/api";
+import { apiFetch, ApiError } from "../lib/api";
 
 export default function MobileAcceptInvite() {
     const { token } = useParams();
     const navigate = useNavigate();
-    const [status, setStatus] = useState<'LOADING' | 'READY' | 'SETUP' | 'SUCCESS' | 'ERROR'>('LOADING');
+    const [status, setStatus] = useState<'LOADING' | 'READY' | 'SETUP' | 'SUCCESS' | 'ERROR' | 'ALREADY_USED'>('LOADING');
     const [message, setMessage] = useState('');
     const [invitationData, setInvitationData] = useState<any>(null);
     const [password, setPassword] = useState('');
@@ -26,8 +26,12 @@ export default function MobileAcceptInvite() {
                 setInvitationData(data);
                 setStatus('READY');
             } catch (err: any) {
-                setStatus('ERROR');
-                setMessage(err.message || 'El enlace de invitación no es válido o ha expirado.');
+                if (err instanceof ApiError && err.code === 'ALREADY_USED') {
+                    setStatus('ALREADY_USED');
+                } else {
+                    setStatus('ERROR');
+                    setMessage(err.message || 'El enlace de invitación no es válido o ha expirado.');
+                }
             }
         };
         if (token) validateInvite();
@@ -226,13 +230,40 @@ export default function MobileAcceptInvite() {
                             </div>
                         )}
 
+                        {status === 'ALREADY_USED' && (
+                            <div className="space-y-8 py-4">
+                                <motion.div
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-600 shadow-inner mx-auto"
+                                >
+                                    <UserCheck className="w-10 h-10" />
+                                </motion.div>
+                                <div className="space-y-3">
+                                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter italic uppercase leading-none">Cuenta<br />Activa</h2>
+                                    <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                                        Tu cuenta ya está creada. Entra con tu <strong>teléfono y contraseña</strong> para reservar.
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="primary"
+                                    className="w-full py-7 rounded-[2rem] bg-blue-600 text-white shadow-xl shadow-blue-600/20 hover:bg-blue-700 group"
+                                    onClick={() => navigate('/login?mode=member')}
+                                >
+                                    <span className="flex items-center justify-center gap-3 font-black tracking-widest uppercase">
+                                        ENTRAR A MI APP <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </span>
+                                </Button>
+                            </div>
+                        )}
+
                         {status === 'ERROR' && (
                             <div className="space-y-8 py-4">
                                 <div className="w-20 h-20 bg-rose-500/10 rounded-[2rem] flex items-center justify-center text-rose-600 shadow-inner">
                                     <AlertCircle className="w-10 h-10" />
                                 </div>
                                 <div className="space-y-4">
-                                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter italic uppercase leading-none">Acceso<br />Denegado</h2>
+                                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter italic uppercase leading-none">Enlace<br />Expirado</h2>
                                     <p className="text-sm font-bold text-rose-500 leading-relaxed px-6">
                                         {message}
                                     </p>
@@ -240,7 +271,7 @@ export default function MobileAcceptInvite() {
                                 <Button
                                     variant="secondary"
                                     className="w-full py-6 rounded-[2rem] border-2 border-slate-100 font-black tracking-widest uppercase text-slate-600"
-                                    onClick={() => navigate('/login')}
+                                    onClick={() => navigate('/login?mode=member')}
                                 >
                                     IR AL LOGIN
                                 </Button>

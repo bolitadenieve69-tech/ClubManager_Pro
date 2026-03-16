@@ -1,5 +1,5 @@
-import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, FormEvent, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiFetch, ApiError } from '../lib/api';
 import { LogIn, UserPlus, Smartphone, Mail, Lock, KeyRound, AlertCircle, Eye, EyeOff, ArrowLeft, ShieldCheck, Trophy, Smartphone as SmartphoneIcon } from 'lucide-react';
 import { PadelLogo } from '../components/PadelLogo';
@@ -11,7 +11,14 @@ type Mode = 'home' | 'login' | 'register' | 'member';
 
 export default function Login() {
     const navigate = useNavigate();
-    const [mode, setMode] = useState<Mode>('home');
+    const [searchParams] = useSearchParams();
+    const [mode, setMode] = useState<Mode>(() =>
+        searchParams.get('mode') === 'member' ? 'member' : 'home'
+    );
+
+    useEffect(() => {
+        if (searchParams.get('mode') === 'member') setMode('member');
+    }, [searchParams]);
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');

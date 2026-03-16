@@ -108,8 +108,13 @@ membersRouter.get(
             throw new ApiError(404, "NOT_FOUND", "La invitación no existe.");
         }
 
+        // Already used → member has an account, redirect them to login
+        if (invitation.status === "USED") {
+            throw new ApiError(409, "ALREADY_USED", "Tu cuenta ya está activada. Inicia sesión con tu teléfono y contraseña.");
+        }
+
         if (invitation.status !== "PENDING" || invitation.expires_at < new Date()) {
-            throw new ApiError(400, "INVALID_TOKEN", "La invitación ya no es válida o ha expirado.");
+            throw new ApiError(400, "INVALID_TOKEN", "La invitación ha expirado. Pide al club que te envíe una nueva.");
         }
 
         res.json({
