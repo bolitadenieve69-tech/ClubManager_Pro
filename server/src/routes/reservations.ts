@@ -66,13 +66,15 @@ reservationsRouter.get(
             for (let min of [0, 30]) {
                 const hourInt = Math.floor(hour);
                 const minOffset = (hour % 1 !== 0) ? 30 : 0;
-                
+
                 const slotStart = new Date(startOfDay);
                 slotStart.setHours(hourInt, min + minOffset, 0, 0);
                 const slotEnd = new Date(slotStart.getTime() + duration * 60000);
 
                 // Skip if before open or after close
                 if (!isWithinOpenHours(slotStart, slotEnd, openHours)) continue;
+
+                const timeStr = `${hourInt.toString().padStart(2, '0')}:${(min + minOffset).toString().padStart(2, '0')}`;
 
                 // For each court, check if available
                 const availableCourts = courtIds.filter(cId => {
@@ -87,10 +89,9 @@ reservationsRouter.get(
                 });
 
                 if (availableCourts.length >= courtCount) {
-                    slots.push({
-                        time: `${hourInt.toString().padStart(2, '0')}:${(min + minOffset).toString().padStart(2, '0')}`,
-                        courts: availableCourts.slice(0, courtCount)
-                    });
+                    slots.push({ time: timeStr, available: true, courts: availableCourts.slice(0, courtCount) });
+                } else {
+                    slots.push({ time: timeStr, available: false, courts: [] });
                 }
             }
         }
@@ -106,14 +107,16 @@ reservationsRouter.post(
     asyncHandler(async (req: AuthRequest, res) => {
         const clubId = req.user?.clubId;
         const userId = req.user?.userId;
-        const { courtIds, startAt, endAt } = z.object({
+        const { courtIds, date, startTime, duration } = z.object({
             courtIds: z.array(z.string()),
-            startAt: z.string().datetime(),
-            endAt: z.string().datetime(),
+            date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+            startTime: z.string().regex(/^\d{2}:\d{2}$/),
+            duration: z.number().min(30).max(300),
         }).parse(req.body);
 
-        const start = new Date(startAt);
-        const end = new Date(endAt);
+        // Build dates server-side (no timezone conversion issues)
+        const start = new Date(`${date}T${startTime}:00`);
+        const end = new Date(start.getTime() + duration * 60000);
 
         // Fix 1: Re-verify availability to prevent race conditions
         const conflict = await prisma.booking.findFirst({

@@ -87,15 +87,13 @@ export default function MobileBook() {
         if (!selectedSlot) return;
         setLoading(true);
         try {
-            const startAt = new Date(`${date}T${selectedSlot.time}:00`);
-            const endAt = new Date(startAt.getTime() + duration * 60000);
-
             const res = await apiFetch<any>('/reservations/hold', {
                 method: 'POST',
                 body: JSON.stringify({
                     courtIds: selectedSlot.courts,
-                    startAt: startAt.toISOString(),
-                    endAt: endAt.toISOString(),
+                    date,
+                    startTime: selectedSlot.time,
+                    duration,
                 })
             });
             setHoldBooking(res.booking);
@@ -309,13 +307,21 @@ export default function MobileBook() {
                                 ) : slots.map((s) => (
                                     <button
                                         key={s.time}
-                                        onClick={() => setSelectedSlot(s)}
+                                        onClick={() => s.available && setSelectedSlot(s)}
+                                        disabled={!s.available}
                                         className={cn(
-                                            "py-5 rounded-2xl border-2 font-black transition-all text-sm",
-                                            selectedSlot?.time === s.time ? "bg-slate-900 border-slate-900 text-white shadow-xl scale-105" : "bg-white border-slate-100 text-slate-500 hover:border-slate-300"
+                                            "py-5 rounded-2xl border-2 font-black transition-all text-sm relative",
+                                            !s.available
+                                                ? "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed line-through"
+                                                : selectedSlot?.time === s.time
+                                                    ? "bg-slate-900 border-slate-900 text-white shadow-xl scale-105"
+                                                    : "bg-white border-slate-100 text-slate-500 hover:border-slate-300"
                                         )}
                                     >
                                         {s.time}
+                                        {!s.available && (
+                                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-400 rounded-full text-white text-[7px] flex items-center justify-center font-black">✕</span>
+                                        )}
                                     </button>
                                 ))}
                             </div>
