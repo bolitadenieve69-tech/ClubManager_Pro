@@ -107,7 +107,7 @@ export default function Reservas() {
         const fetchPreview = async () => {
             setLoadingPreview(true);
             try {
-                const start = new Date(`${date}T${startTime}:00Z`);
+                const start = new Date(`${date}T${startTime}:00`);
                 const end = new Date(start.getTime() + duration * 60000);
 
                 const response = await apiFetch<any>("/reservations/recurring/preview", {
@@ -175,7 +175,7 @@ export default function Reservas() {
         setError("");
         setOk("");
         try {
-            const start = new Date(`${date}T${startTime}:00Z`);
+            const start = new Date(`${date}T${startTime}:00`);
             const end = new Date(start.getTime() + duration * 60000);
 
             let response;
