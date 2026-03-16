@@ -27,6 +27,26 @@ import { cn } from "../lib/utils";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 
+const PAGE_TITLES: Record<string, string> = {
+    '/dashboard': 'Panel Principal',
+    '/schedule': 'Horario Diario',
+    '/courts': 'Pistas',
+    '/rates': 'Tarifas',
+    '/reservations': 'Reservas',
+    '/tournaments': 'Americano',
+    '/members': 'Socios',
+    '/settings': 'Configuración',
+    '/accounting': 'Contabilidad',
+    '/invoices': 'Facturas',
+    '/expenses': 'Gastos',
+    '/movements': 'Caja',
+    '/closeouts': 'Cierres',
+    '/billing': 'Facturación',
+    '/analytics': 'Analítica',
+    '/insights': 'Insights',
+    '/reports': 'Reportes',
+};
+
 const navigationGroups = [
     {
         title: "Menú Principal",
@@ -222,7 +242,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
                         <Link to="/dashboard" className="group flex items-center gap-2">
                             <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.25em] group-hover:text-primary-600 transition-colors">
-                                {location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || "Overview"}
+                                {PAGE_TITLES[location.pathname] || 'Panel Principal'}
                             </h3>
                         </Link>
                     </div>
