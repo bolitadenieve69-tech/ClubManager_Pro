@@ -15,6 +15,9 @@ const priceSchema = z.object({
     valid_days: z.string().min(1, "Debes indicar días válidos."),
     start_time: hhmm,
     end_time: hhmm,
+    valid_from: z.string().datetime().nullable().optional(),
+    valid_until: z.string().datetime().nullable().optional(),
+    label: z.string().nullable().optional(),
 });
 
 const priceUpdateSchema = priceSchema.partial();
@@ -61,6 +64,9 @@ pricesRouter.post(
                 valid_days: parsed.valid_days,
                 start_time: parsed.start_time,
                 end_time: parsed.end_time,
+                valid_from: parsed.valid_from ? new Date(parsed.valid_from) : null,
+                valid_until: parsed.valid_until ? new Date(parsed.valid_until) : null,
+                label: parsed.label ?? null,
             },
         });
 

@@ -187,7 +187,7 @@ export default function InvitationModal({ isOpen, onClose, onSuccess, member }: 
                                     <button
                                         onClick={() => {
                                             const publicUrl = (import.meta as any).env.VITE_PUBLIC_URL || window.location.origin;
-                                            navigator.clipboard.writeText(`${publicUrl}/join/${successData.token}`);
+                                            navigator.clipboard.writeText(`${publicUrl}${successData.inviteUrl}`);
                                             setCopied(true);
                                             setTimeout(() => setCopied(false), 2000);
                                         }}

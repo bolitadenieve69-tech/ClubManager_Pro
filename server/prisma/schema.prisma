@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Club {
@@ -271,16 +272,19 @@ model Rate {
 }
 
 model Price {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   club_id     String
   court_id    String?
   hourly_rate Int
   valid_days  String
   start_time  String
   end_time    String
-  created_at  DateTime @default(now())
-  court       Court?   @relation(fields: [court_id], references: [id])
-  club        Club     @relation(fields: [club_id], references: [id])
+  valid_from  DateTime?
+  valid_until DateTime?
+  label       String?
+  created_at  DateTime  @default(now())
+  court       Court?    @relation(fields: [court_id], references: [id])
+  club        Club      @relation(fields: [club_id], references: [id])
 
   @@index([club_id])
   @@index([court_id])

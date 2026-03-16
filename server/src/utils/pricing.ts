@@ -4,6 +4,8 @@ export interface PriceConfig {
     valid_days: string; // "1,2,3,4,5"
     start_time: string; // "08:00"
     end_time: string;   // "22:00"
+    valid_from?: Date | null;
+    valid_until?: Date | null;
 }
 
 export interface PricingOptions {
@@ -43,8 +45,25 @@ export function formatTimeHHMM(date: Date): string {
     return `${hours}:${minutes}`;
 }
 
+function stripTime(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/**
+ * Returns true if the given date falls within the price rule's seasonal range (if any).
+ * Rules without valid_from/valid_until are always applicable.
+ */
+function isSeasonalMatch(price: PriceConfig, date: Date): boolean {
+    if (!price.valid_from && !price.valid_until) return true;
+    const day = stripTime(date);
+    if (price.valid_from && day < stripTime(new Date(price.valid_from))) return false;
+    if (price.valid_until && day > stripTime(new Date(price.valid_until))) return false;
+    return true;
+}
+
 /**
  * Calcula el precio total de una reserva basándose en tramos horarios.
+ * Prioridad: regla con rango de fechas > regla sin rango de fechas.
  */
 export function calculateReservationPrice(
     start: Date,
@@ -61,11 +80,17 @@ export function calculateReservationPrice(
         const segmentStartStr = formatTimeHHMM(segment.start);
         const dayOfWeek = segment.start.getDay().toString();
 
-        const matchingPrice = prices.find(p =>
+        // Filter rules that match day of week and time slot
+        const candidates = prices.filter(p =>
             p.valid_days.includes(dayOfWeek) &&
             segmentStartStr >= p.start_time &&
-            segmentStartStr < p.end_time
+            segmentStartStr < p.end_time &&
+            isSeasonalMatch(p, segment.start)
         );
+
+        // Prefer seasonal rules (with valid_from or valid_until) over permanent ones
+        const seasonal = candidates.filter(p => p.valid_from || p.valid_until);
+        const matchingPrice = seasonal.length > 0 ? seasonal[0] : candidates[0];
 
         const hourlyRate = matchingPrice?.hourly_rate ?? options.defaultHourlyRate;
 
@@ -83,6 +108,7 @@ export function calculateReservationPrice(
             start: segmentStartStr,
             duration: durationHours,
             rate: hourlyRate,
+            rateCents: hourlyRate,
             cost: segmentCost
         });
     }

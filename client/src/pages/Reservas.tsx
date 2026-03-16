@@ -60,7 +60,8 @@ export default function Reservas() {
     const [duration, setDuration] = useState(90);
     const [guestName, setGuestName] = useState("");
     const [phone, setPhone] = useState("");
-    const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD">("CASH");
+    const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "BIZUM">("CASH");
+    const [bizumPayee, setBizumPayee] = useState<string>("");
 
     // Recurring State
     const [isRecurring, setIsRecurring] = useState(false);
@@ -77,15 +78,17 @@ export default function Reservas() {
         setLoading(true);
         setError("");
         try {
-            const [resData, courtsData, meData] = await Promise.all([
+            const [resData, courtsData, meData, configData] = await Promise.all([
                 reservationsApi.list(),
                 apiFetch<{ courts: Court[] }>("/courts"),
-                apiFetch<{ user: { id: string } }>("/auth/me")
+                apiFetch<{ user: { id: string } }>("/auth/me"),
+                apiFetch<{ bizum_payee?: string }>("/club").catch(() => ({}))
             ]);
             setReservations(resData.reservations);
             setCourts(courtsData.courts);
             if (courtsData.courts.length > 0 && !courtId) setCourtId(courtsData.courts[0].id);
             if (meData.user) setUserId(meData.user.id);
+            if (configData.bizum_payee) setBizumPayee(configData.bizum_payee);
         } catch (e: any) {
             setError(e instanceof ApiError ? e.message : "Error al cargar datos.");
         } finally {
@@ -425,11 +428,12 @@ export default function Reservas() {
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                                         💶 Método de Pago
                                     </label>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-3 gap-2">
                                         <button
+                                            type="button"
                                             onClick={() => setPaymentMethod("CASH")}
                                             className={cn(
-                                                "py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-2",
+                                                "py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5",
                                                 paymentMethod === "CASH"
                                                     ? "bg-amber-50 border-amber-200 text-amber-700 shadow-sm"
                                                     : "border-slate-100 text-slate-500 hover:bg-slate-50"
@@ -439,18 +443,40 @@ export default function Reservas() {
                                             Metálico
                                         </button>
                                         <button
+                                            type="button"
                                             onClick={() => setPaymentMethod("CARD")}
                                             className={cn(
-                                                "py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-2",
+                                                "py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5",
                                                 paymentMethod === "CARD"
                                                     ? "bg-blue-50 border-blue-200 text-blue-700 shadow-sm"
                                                     : "border-slate-100 text-slate-500 hover:bg-slate-50"
                                             )}
                                         >
                                             <CreditCard className="w-4 h-4" />
-                                            Tarjeta / Bizum
+                                            Tarjeta
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaymentMethod("BIZUM")}
+                                            className={cn(
+                                                "py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5",
+                                                paymentMethod === "BIZUM"
+                                                    ? "bg-violet-50 border-violet-200 text-violet-700 shadow-sm"
+                                                    : "border-slate-100 text-slate-500 hover:bg-slate-50"
+                                            )}
+                                        >
+                                            <Phone className="w-4 h-4" />
+                                            Bizum
                                         </button>
                                     </div>
+                                    {paymentMethod === "BIZUM" && (
+                                        <div className="mt-2 p-3 bg-violet-50 border border-violet-200 rounded-xl text-xs text-violet-700 font-medium">
+                                            {bizumPayee
+                                                ? <>Enviar pago por Bizum al número: <span className="font-black">{bizumPayee}</span></>
+                                                : <>Bizum seleccionado. Configura el número en <strong>Configuración</strong>.</>
+                                            }
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Recurring Options */}

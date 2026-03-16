@@ -144,28 +144,31 @@ export default function Members() {
                         <p className="text-slate-500 font-medium">Administra la base de datos de tu club y exporta contactos para marketing.</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap gap-2 w-full md:w-auto">
                         <Button
                             variant="secondary"
                             onClick={handleExport}
                             loading={exporting}
-                            className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm"
+                            className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm flex-1 md:flex-none"
                             icon={<Download className="w-4 h-4" />}
                         >
-                            Exportar CSV
+                            <span className="hidden sm:inline">Exportar CSV</span>
+                            <span className="sm:hidden">CSV</span>
                         </Button>
                         <Button
                             variant="secondary"
-                            className="bg-white border-slate-200 text-slate-700"
+                            className="bg-white border-slate-200 text-slate-700 flex-1 md:flex-none"
                             icon={<UserPlus className="w-4 h-4" />}
                             onClick={() => setIsCreatingManual(!isCreatingManual)}
                         >
-                            {isCreatingManual ? "CANCELAR REGISTRO" : "REGISTRO MANUAL"}
+                            <span className="hidden sm:inline">{isCreatingManual ? "CANCELAR" : "REGISTRO MANUAL"}</span>
+                            <span className="sm:hidden">{isCreatingManual ? "CANCELAR" : "MANUAL"}</span>
                         </Button>
                         <Button
                             variant="primary"
                             icon={<Mail className="w-4 h-4" />}
                             onClick={() => setIsInviteModalOpen(true)}
+                            className="w-full sm:w-auto"
                         >
                             ENVIAR INVITACIÓN
                         </Button>

@@ -295,7 +295,7 @@ const reservationSchema = z.object({
     user_id: z.string().uuid("ID de usuario inválido.").optional().nullable(),
     guest_name: z.string().min(1).optional(),
     phone: z.string().min(1).optional(),
-    payment_method: z.enum(["CASH", "CARD"]).optional(),
+    payment_method: z.enum(["CASH", "CARD", "BIZUM"]).optional(),
     start_time: z.string().datetime("Fecha de inicio inválida.").optional(),
     end_time: z.string().datetime("Fecha de fin inválida.").optional(),
     start_at: z.string().datetime().optional(),
@@ -388,10 +388,12 @@ reservationsRouter.post(
                 hourly_rate: p.hourly_rate,
                 valid_days: p.valid_days,
                 start_time: p.start_time,
-                end_time: p.end_time
+                end_time: p.end_time,
+                valid_from: p.valid_from,
+                valid_until: p.valid_until,
             })), {
                 granularityMinutes: club.slot_minutes,
-                defaultHourlyRate: (club.price_per_player_cents * 4) // Approximation of hourly rate if missing
+                defaultHourlyRate: (club.price_per_player_cents * 4)
             });
 
             res.json(pricingResult);
@@ -483,7 +485,9 @@ reservationsRouter.post(
             hourly_rate: p.hourly_rate,
             valid_days: p.valid_days,
             start_time: p.start_time,
-            end_time: p.end_time
+            end_time: p.end_time,
+            valid_from: p.valid_from,
+            valid_until: p.valid_until,
         })), {
             granularityMinutes: club.slot_minutes,
             defaultHourlyRate: (club.price_per_player_cents * 4)
@@ -508,6 +512,9 @@ reservationsRouter.post(
 
         const recurringId = parsed.recurring ? randomUUID() : null;
         const shouldSkipConflicts = parsed.skipConflicts || false;
+
+        // Cash payments go to the register only — no invoice, no fiscal accounting
+        const isCash = parsed.payment_method === "CASH";
 
         // 4. Transaction: Create everything for each occurrence efficiently
         const results = await prisma.$transaction(async (tx) => {
@@ -538,61 +545,98 @@ reservationsRouter.post(
 
             if (validOccurrences.length === 0) return [];
 
-            // Update Club invoice counter ONCE
-            const txClub = await tx.club.update({
-                where: { id: clubId },
-                data: { invoice_counter: { increment: validOccurrences.length } },
-                select: { invoice_counter: true }
-            });
+            // Only increment invoice counter for billable (non-cash) payments
+            let startInvoiceNumber = 0;
+            if (!isCash) {
+                const txClub = await tx.club.update({
+                    where: { id: clubId },
+                    data: { invoice_counter: { increment: validOccurrences.length } },
+                    select: { invoice_counter: true }
+                });
+                startInvoiceNumber = txClub.invoice_counter - validOccurrences.length;
+            }
 
-            const startInvoiceNumber = txClub.invoice_counter - validOccurrences.length;
             const isGuestBooking = req.user?.role === "USER";
             const expiryTime = isGuestBooking ? 2 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
             const now = new Date();
 
-            const invoiceData = [];
-            const bookingData = [];
+            const invoiceData: any[] = [];
+            const bookingData: any[] = [];
             const sharesData: any[] = [];
+            const movementsData: any[] = [];
             const createdBookings: any[] = [];
 
             for (let i = 0; i < validOccurrences.length; i++) {
                 const occ = validOccurrences[i];
-                const invoiceId = randomUUID();
                 const bookingId = randomUUID();
-                const invoiceNumber = startInvoiceNumber + i;
 
-                invoiceData.push({
-                    id: invoiceId,
-                    club_id: clubId!,
-                    number: invoiceNumber,
-                    total_cents: totalPrice,
-                    status: "ISSUED",
-                    created_at: now
-                });
+                if (isCash) {
+                    // Cash: no invoice — register as cash movement in the register
+                    bookingData.push({
+                        id: bookingId,
+                        club_id: clubId!,
+                        court_id: parsed.court_id,
+                        user_id: parsed.user_id || null,
+                        guest_name: parsed.guest_name || null,
+                        phone: parsed.phone || null,
+                        payment_method: "CASH",
+                        invoice_id: null,
+                        recurring_id: recurringId,
+                        start_at: occ.start,
+                        end_at: occ.end,
+                        total_cents: totalPrice,
+                        price_cents: Math.floor(totalPrice / 4),
+                        strategy: parsed.strategy,
+                        status: "CONFIRMED",
+                        amount_paid: totalPrice,
+                        payment_status: "PAGADO",
+                        hold_expires_at: new Date(Date.now() + expiryTime),
+                        created_at: now
+                    });
 
-                // Note: Invoice items still need to be created. 
-                // Since they are relations, we should either use create or multiple createMany.
-                // For simplicity and correctness with InvoiceItem, let's keep it in mind.
+                    movementsData.push({
+                        id: randomUUID(),
+                        club_id: clubId!,
+                        amount_cents: totalPrice,
+                        concept: `Reserva en efectivo — ${court.name} (${occ.start.toLocaleDateString("es-ES")})`,
+                        category: "CAJA",
+                        date: occ.start,
+                        created_at: now
+                    });
+                } else {
+                    // Card / Bizum: create invoice for fiscal accounting
+                    const invoiceId = randomUUID();
+                    const invoiceNumber = startInvoiceNumber + i;
 
-                bookingData.push({
-                    id: bookingId,
-                    club_id: clubId!,
-                    court_id: parsed.court_id,
-                    user_id: parsed.user_id || null,
-                    guest_name: parsed.guest_name || null,
-                    phone: parsed.phone || null,
-                    payment_method: parsed.payment_method || null,
-                    invoice_id: invoiceId,
-                    recurring_id: recurringId,
-                    start_at: occ.start,
-                    end_at: occ.end,
-                    total_cents: totalPrice,
-                    price_cents: Math.floor(totalPrice / 4),
-                    strategy: parsed.strategy,
-                    status: "CONFIRMED",
-                    hold_expires_at: new Date(Date.now() + expiryTime),
-                    created_at: now
-                });
+                    invoiceData.push({
+                        id: invoiceId,
+                        club_id: clubId!,
+                        number: invoiceNumber,
+                        total_cents: totalPrice,
+                        status: "ISSUED",
+                        created_at: now
+                    });
+
+                    bookingData.push({
+                        id: bookingId,
+                        club_id: clubId!,
+                        court_id: parsed.court_id,
+                        user_id: parsed.user_id || null,
+                        guest_name: parsed.guest_name || null,
+                        phone: parsed.phone || null,
+                        payment_method: parsed.payment_method || null,
+                        invoice_id: invoiceId,
+                        recurring_id: recurringId,
+                        start_at: occ.start,
+                        end_at: occ.end,
+                        total_cents: totalPrice,
+                        price_cents: Math.floor(totalPrice / 4),
+                        strategy: parsed.strategy,
+                        status: "CONFIRMED",
+                        hold_expires_at: new Date(Date.now() + expiryTime),
+                        created_at: now
+                    });
+                }
 
                 if (parsed.strategy === "SPLIT") {
                     const shareAmount = Math.floor(totalPrice / 4);
@@ -629,22 +673,26 @@ reservationsRouter.post(
             }
 
             // BATCH INSERTS
-            await tx.invoice.createMany({ data: invoiceData });
-            
-            // Create Invoice Items in batch
-            const invoiceItemsData = invoiceData.map(inv => ({
-                id: randomUUID(),
-                invoice_id: inv.id,
-                description: `Reserva de pista: ${court.name}`,
-                quantity: 1,
-                unit_price: totalPrice,
-                total_price: totalPrice,
-                created_at: now
-            }));
-            await tx.invoiceItem.createMany({ data: invoiceItemsData });
+            if (invoiceData.length > 0) {
+                await tx.invoice.createMany({ data: invoiceData });
+                const invoiceItemsData = invoiceData.map(inv => ({
+                    id: randomUUID(),
+                    invoice_id: inv.id,
+                    description: `Reserva de pista: ${court.name}`,
+                    quantity: 1,
+                    unit_price: totalPrice,
+                    total_price: totalPrice,
+                    created_at: now
+                }));
+                await tx.invoiceItem.createMany({ data: invoiceItemsData });
+            }
 
             await tx.booking.createMany({ data: bookingData });
             await tx.paymentShare.createMany({ data: sharesData });
+
+            if (movementsData.length > 0) {
+                await tx.movement.createMany({ data: movementsData });
+            }
 
             return createdBookings;
         });
