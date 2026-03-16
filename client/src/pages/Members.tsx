@@ -4,7 +4,7 @@ import { apiFetch } from '../lib/api';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Users, Download, UserPlus, Search, Mail, Phone, ExternalLink, Loader2, Check } from 'lucide-react';
+import { Users, Download, UserPlus, Search, Mail, Phone, ExternalLink, Loader2, Check, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import InvitationModal from '../components/InvitationModal';
@@ -29,6 +29,8 @@ export default function Members() {
     const [newPhone, setNewPhone] = useState("");
     const [selectedMember, setSelectedMember] = useState<Member | null>(null);
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     const fetchMembers = async () => {
         setLoading(true);
@@ -105,6 +107,19 @@ export default function Members() {
     const closeInvitationModal = () => {
         setIsInviteModalOpen(false);
         setSelectedMember(null);
+    };
+
+    const handleDeleteMember = async (id: string) => {
+        setDeletingId(id);
+        try {
+            await apiFetch(`/members/${id}`, { method: 'DELETE' });
+            setConfirmDeleteId(null);
+            fetchMembers();
+        } catch (err: any) {
+            setError(err.message || "Error al eliminar socio");
+        } finally {
+            setDeletingId(null);
+        }
     };
 
     const filteredMembers = members.filter(m =>
@@ -269,6 +284,7 @@ export default function Members() {
                                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">WhatsApp</th>
                                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</th>
                                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">App PWA</th>
+                                    <th className="px-4 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right"><span className="sr-only">Acciones</span></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -313,6 +329,37 @@ export default function Members() {
                                                 >
                                                     ENVIAR APP
                                                 </Button>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-6 text-right">
+                                            {confirmDeleteId === member.id ? (
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setConfirmDeleteId(null)}
+                                                        className="text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase px-2"
+                                                    >
+                                                        No
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteMember(member.id)}
+                                                        disabled={deletingId === member.id}
+                                                        className="text-[10px] font-black text-white bg-rose-500 hover:bg-rose-600 uppercase px-3 py-1.5 rounded-lg flex items-center gap-1 disabled:opacity-50"
+                                                    >
+                                                        {deletingId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                                        Borrar
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setConfirmDeleteId(member.id)}
+                                                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                                    title="Eliminar socio"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             )}
                                         </td>
                                     </motion.tr>

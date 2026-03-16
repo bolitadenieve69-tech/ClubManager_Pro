@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db/prisma.js";
-import { authMiddleware, AuthRequest } from "../middleware/auth.js";
+import { authMiddleware, adminOnly, AuthRequest } from "../middleware/auth.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../middleware/error.js";
 import crypto from "crypto";
@@ -254,5 +254,42 @@ membersRouter.get(
             orderBy: { full_name: "asc" }
         });
         res.json({ members });
+    })
+);
+
+// Admin: Delete member
+membersRouter.delete(
+    "/:id",
+    authMiddleware,
+    adminOnly,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const clubId = req.user?.clubId;
+        const { id } = z.object({ id: z.string() }).parse(req.params);
+
+        const member = await prisma.member.findFirst({
+            where: { id, club_id: clubId! }
+        });
+
+        if (!member) {
+            throw new ApiError(404, "NOT_FOUND", "Socio no encontrado.");
+        }
+
+        // Cancel pending invitations
+        await prisma.invitation.updateMany({
+            where: { member_id: id, status: "PENDING" },
+            data: { status: "CANCELLED" }
+        });
+
+        // Delete linked user account if exists (virtual guest account only)
+        if (member.user_id) {
+            const user = await prisma.user.findUnique({ where: { id: member.user_id } });
+            if (user?.email.endsWith("@guest.club")) {
+                await prisma.user.delete({ where: { id: member.user_id } });
+            }
+        }
+
+        await prisma.member.delete({ where: { id } });
+
+        res.json({ message: "Socio eliminado correctamente." });
     })
 );
