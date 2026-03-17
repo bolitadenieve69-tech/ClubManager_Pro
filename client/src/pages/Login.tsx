@@ -39,13 +39,13 @@ export default function Login() {
         setError('');
         setLoading(true);
         try {
-            const data = await apiFetch<{ token: string }>('/auth/login', {
+            const data = await apiFetch<{ token: string; needsSetup?: boolean }>('/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({ email, password }),
             });
             localStorage.setItem('token', data.token);
             localStorage.setItem('user_email', email);
-            navigate('/dashboard');
+            navigate(data.needsSetup ? '/setup' : '/dashboard');
         } catch (e: any) {
             if (e instanceof ApiError) setError(e.message);
             else setError('Error desconocido.');
@@ -83,7 +83,7 @@ export default function Login() {
             });
             localStorage.setItem('token', data.token);
             localStorage.setItem('user_email', data.user.email);
-            navigate('/dashboard');
+            navigate('/setup'); // always setup on first registration
         } catch (e: any) {
             if (e instanceof ApiError) setError(e.message);
             else setError('Error desconocido.');

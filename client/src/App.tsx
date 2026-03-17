@@ -25,6 +25,7 @@ import MobileProfile from './pages/MobileProfile';
 import Members from './pages/Members';
 import Configuracion from './pages/Configuracion';
 import Comunicaciones from './pages/Comunicaciones';
+import ClubSetup from './pages/ClubSetup';
 
 function SmartRedirect() {
     const token = localStorage.getItem('token');
@@ -185,6 +186,7 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                <Route path="/setup" element={<ClubSetup />} />
 
                 {/* Rutas Móviles (PWA) */}
                 <Route path="/join/:token" element={<MobileAcceptInvite />} />

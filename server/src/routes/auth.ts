@@ -102,7 +102,12 @@ router.post('/login', asyncHandler(async (req: Request, res: Response) => {
         { expiresIn: '7d' }
     );
 
-    res.json({ token });
+    const club = await prisma.club.findUnique({
+        where: { id: user.club_id },
+        select: { display_name: true }
+    });
+
+    res.json({ token, needsSetup: !club?.display_name });
 }));
 
 // GET /auth/me (protected)
