@@ -42,6 +42,7 @@ model Club {
   supplier_invoices      SupplierInvoice[]
   tournaments            Tournament[]
   announcements          Announcement[]
+  push_subscriptions     PushSubscription[]
   users                  User[]
   min_deposit_cents      Int               @default(0)
   hold_minutes           Int               @default(10)
@@ -363,6 +364,18 @@ model SupplierInvoice {
 
   @@index([club_id])
   @@index([date])
+}
+
+model PushSubscription {
+  id         String   @id @default(uuid())
+  club_id    String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  created_at DateTime @default(now())
+  club       Club     @relation(fields: [club_id], references: [id])
+
+  @@index([club_id])
 }
 
 model Announcement {

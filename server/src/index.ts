@@ -81,6 +81,7 @@ import supplierInvoicesRouter from "./routes/supplierInvoices.js";
 import { accountingRouter } from "./routes/accounting.js";
 import { usersRouter } from "./routes/users.js";
 import { announcementsRouter } from "./routes/announcements.js";
+import { pushRouter } from "./routes/push.js";
 
 app.use("/auth", authRoutes);
 app.use("/club", clubRoutes);
@@ -103,6 +104,7 @@ app.use("/supplier-invoices", supplierInvoicesRouter);
 app.use("/accounting", accountingRouter);
 app.use("/users", usersRouter);
 app.use("/announcements", announcementsRouter);
+app.use("/push", pushRouter);
 // app.use("/club", clubRoutes);
 
 // Error Handling

@@ -11,6 +11,9 @@ const envSchema = z.object({
     CORS_ORIGIN: z.string().default('*'),
     APP_VERSION: z.string().default('1.0.0'),
     REGISTER_SECRET: z.string().optional(),
+    VAPID_EMAIL: z.string().default('mailto:admin@padelclub.app'),
+    VAPID_PUBLIC_KEY: z.string().optional(),
+    VAPID_PRIVATE_KEY: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

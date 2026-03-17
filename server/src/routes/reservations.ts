@@ -8,6 +8,7 @@ import { calculateReservationPrice } from "../utils/pricing.js";
 import { generateOccurrences, RecurringRule } from "../utils/recurring.js";
 import { randomUUID } from 'node:crypto';
 import { isWithinOpenHours, getSpainHHMM, getSpainDay, spainLocalToUtc } from "../utils/validation.js";
+import { notifyClub } from "../utils/pushNotify.js";
 
 export const reservationsRouter = Router();
 
@@ -199,6 +200,15 @@ reservationsRouter.post(
                 price_cents: Math.floor(totalCents / courtIds.length),
             }
         });
+
+        // Notify club admin via Web Push
+        const court = await prisma.court.findUnique({ where: { id: courtIds[0] } });
+        const timeStr = getSpainHHMM(start);
+        notifyClub(clubId!, {
+            title: '🎾 Nueva Reserva',
+            body: `Pista ${court?.name ?? 'desconocida'} · ${date} a las ${timeStr}`,
+            url: '/reservations'
+        }).catch(() => {});
 
         res.json({ booking });
     })
