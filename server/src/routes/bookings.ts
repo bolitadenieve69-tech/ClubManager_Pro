@@ -148,6 +148,28 @@ bookingsRouter.post(
     })
 );
 
+// GET /bookings/new-count?since=<ISO> — admin: count new PWA bookings since timestamp
+bookingsRouter.get(
+    "/new-count",
+    authMiddleware,
+    asyncHandler(async (req: AuthRequest, res) => {
+        const clubId = req.user?.clubId;
+        const since = req.query.since as string | undefined;
+        const sinceDate = since ? new Date(since) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const count = await prisma.booking.count({
+            where: {
+                club_id: clubId!,
+                source: "PWA",
+                created_at: { gt: sinceDate },
+                status: { in: ["HOLD", "CONFIRMED", "PENDING_PAYMENT"] }
+            }
+        });
+
+        res.json({ count });
+    })
+);
+
 // GET BOOKING BY ID
 bookingsRouter.get(
     "/:id",

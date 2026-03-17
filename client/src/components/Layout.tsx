@@ -1,7 +1,8 @@
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { PadelLogo } from "./PadelLogo";
 import { fetchMe, clearSession } from "../lib/auth";
+import { apiFetch } from "../lib/api";
 import {
     LayoutDashboard,
     Building2,
@@ -89,6 +90,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const location = useLocation();
     const [email, setEmail] = useState<string>("");
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [newBookings, setNewBookings] = useState(0);
+    const lastSeenRef = useRef<string>(
+        localStorage.getItem('bookings_last_seen') || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    );
 
     useEffect(() => {
         let cancelled = false;
@@ -109,6 +114,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             cancelled = true;
         };
     }, [navigate]);
+
+    // Poll for new PWA bookings every 30s
+    useEffect(() => {
+        const fetchCount = async () => {
+            try {
+                const data = await apiFetch<{ count: number }>(
+                    `/bookings/new-count?since=${encodeURIComponent(lastSeenRef.current)}`
+                );
+                setNewBookings(data.count);
+            } catch { /* ignore */ }
+        };
+        fetchCount();
+        const interval = setInterval(fetchCount, 30_000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Clear badge when admin visits /reservations
+    useEffect(() => {
+        if (location.pathname === '/reservations') {
+            const now = new Date().toISOString();
+            lastSeenRef.current = now;
+            localStorage.setItem('bookings_last_seen', now);
+            setNewBookings(0);
+        }
+    }, [location.pathname]);
 
     function logout() {
         clearSession();
@@ -178,7 +208,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                             )}
                                         >
                                             <Icon className={cn("w-4 h-4 transition-transform group-hover:scale-110", isActive ? "text-white" : "text-slate-500 group-hover:text-primary-400")} />
-                                            <span className="relative z-10">{link.name}</span>
+                                            <span className="relative z-10 flex-1">{link.name}</span>
+                                            {link.path === '/reservations' && newBookings > 0 && (
+                                                <span className="relative z-10 min-w-[18px] h-[18px] bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 shadow-lg shadow-rose-500/40 animate-pulse">
+                                                    {newBookings > 9 ? '9+' : newBookings}
+                                                </span>
+                                            )}
                                             {isActive && (
                                                 <motion.div
                                                     layoutId="activeNav"
